@@ -365,6 +365,7 @@ function App() {
   const [user, setUser] = useState("");
   const [tab, setTab] = useState("matrix");
   const [mode, setMode] = useState("pending");
+  const [surveySlots, setSurveySlots] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
   const [timedOut, setTimedOut] = useState(false);
   const dataLoaded = useRef(false);
@@ -565,6 +566,7 @@ function App() {
     setView: setView,
     setUser: setUser,
     setMode: setMode,
+    setSurveySlots: setSurveySlots,
     data: data,
     slots: slots,
     names: data.expectedNames || []
@@ -707,6 +709,7 @@ function UForm({
   setView,
   setUser,
   setMode,
+  setSurveySlots,
   data,
   slots,
   names
@@ -715,6 +718,12 @@ function UForm({
   const [valid, setValid] = useState(null);
   const go = m => {
     if (!valid) return;
+    // Freeze the pending slots right now before any responses are saved
+    const frozen = m === "update" ? slots : slots.filter(s => {
+      const r = data.responses[`${s.id}::${valid.toLowerCase()}`];
+      return !r || r.status === "tbd";
+    });
+    setSurveySlots(frozen);
     setUser(valid);
     setMode(m);
     setView("survey");
@@ -844,15 +853,8 @@ function USurvey({
   const [extra, setExtra] = useState("");
   const [saving, setSaving] = useState(false);
   const prev = useRef(-1);
-  const target = mode === "update" ? slots : slots.filter(s => {
-    const r = data.responses[`${s.id}::${name.toLowerCase()}`];
-    return !r || r.status === "tbd";
-  });
-  // Snapshot the target list on first render so saving responses
-  // doesn't cause the list to shrink and skip slots mid-survey
-  const targetRef = useRef(null);
-  if (targetRef.current === null) targetRef.current = target;
-  const frozenTarget = targetRef.current;
+  // slots is already frozen at survey start by App — use directly
+  const frozenTarget = slots;
   const slot = frozenTarget[idx];
   const er = slot ? data.responses[`${slot.id}::${name.toLowerCase()}`] : null;
   useEffect(() => {
