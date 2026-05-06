@@ -1,32 +1,2790 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Test</title>
+<title>Elim Coordinator</title><!-- v2 -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script type="module">
+  import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import{getFirestore,doc,getDoc,setDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const cfg={apiKey:"AIzaSyBH5hDY39SRamPlDt2NC-BnEKuX0VfQv0U",authDomain:"elim-event-signups.firebaseapp.com",projectId:"elim-event-signups",storageBucket:"elim-event-signups.firebasestorage.app",messagingSenderId:"644104804445",appId:"1:644104804445:web:cd3eefa236a825a26e55b4"};
+  const app=initializeApp(cfg);
+  const db=getFirestore(app);
+  window._db=db;
+  window._fsDoc=doc;
+  window._fsGet=getDoc;
+  window._fsSet=setDoc;
+  window._fsSnap=onSnapshot;
+  window._fsReady=true;
+  document.dispatchEvent(new Event("fs-ready"));
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-body{background:#0c0c0e;color:#f0ede6;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-</style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root,#root,.app{--bg:#0c0c0e;--s:#141416;--s2:#1c1c20;--b:#2a2a30;--a:#e8c97d;--a2:#c9a84c;--t:#f0ede6;--t2:#b0ada8;--t3:#7a7670;--g:#6fcf8a;--r:#e87d7d;--am:#e8b97d;--bl:#7db8e8;--rad:12px}
+html,body,#root{background:#0c0c0e;color:#f0ede6;font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.5}
+.app{max-width:900px;margin:0 auto;padding:40px 24px;background:#0c0c0e;color:#f0ede6;min-height:100vh}
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:48px;border-bottom:1px solid var(--b);padding-bottom:24px}
+.logo{font-family:'Playfair Display',serif;font-size:13px;font-style:italic;color:var(--a);letter-spacing:.08em}
+.alink{font-size:11px;color:var(--t3);cursor:pointer;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--b);padding:6px 14px;border-radius:6px;background:transparent;transition:all .2s}
+.alink:hover{color:var(--a);border-color:var(--a)}
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--rad);padding:32px;animation:fu .4s ease both}
+@keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.slabel{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+.hl{font-family:'Playfair Display',serif;font-size:clamp(26px,5vw,42px);font-weight:900;line-height:1.1;margin-bottom:10px;color:var(--t)}
+.sub{font-size:13px;color:var(--t2);line-height:1.7;max-width:480px;margin-bottom:28px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);margin-bottom:8px}
+input[type=text],input[type=password],input[type=date],input[type=time],textarea{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:11px 15px;color:var(--t);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--a)}
+textarea{resize:vertical;min-height:70px}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:11px 24px;border-radius:8px;cursor:pointer;border:none;transition:all .2s;font-weight:500}
+.bp{background:var(--a);color:#0c0c0e}.bp:hover{background:var(--a2);transform:translateY(-1px)}
+.bg{background:transparent;color:var(--t2);border:1px solid var(--b)}.bg:hover{color:var(--t);border-color:var(--t3)}
+.bd{background:transparent;color:var(--r);border:1px solid var(--r)}.bd:hover{background:var(--r);color:#0c0c0e}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.name-combo{position:relative}
+.name-combo input.valid{border-color:var(--g)!important}
+.name-combo input.invalid{border-color:var(--r)!important}
+.ndrop{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:100;background:var(--s2);border:1px solid var(--b);border-radius:8px;overflow:hidden;animation:fu .15s ease both;max-height:200px;overflow-y:auto}
+.nopt{padding:10px 15px;font-size:13px;cursor:pointer;color:var(--t);transition:background .1s;border-bottom:1px solid var(--b)}
+.nopt:last-child{border-bottom:none}
+.nopt:hover,.nopt.foc{background:var(--s);color:var(--a)}
+.nval{font-size:11px;margin-top:5px;min-height:16px}
+.nval.ok{color:var(--g)}.nval.err{color:var(--r)}
+.acard{background:var(--s);border:1px solid var(--b);border-radius:var(--rad);padding:26px;margin-bottom:14px;animation:fu .3s ease both}
+.ename{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;margin-bottom:4px;color:var(--t)}
+.emeta{font-size:12px;color:var(--t2);margin-bottom:18px;line-height:1.8}
+.abtns{display:flex;gap:9px;flex-wrap:wrap}
+.abtn{flex:1;min-width:76px;padding:11px 0;border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:1px solid var(--b);background:transparent;color:var(--t2);transition:all .15s}
+.abtn:hover{transform:translateY(-1px)}
+.abtn.yes{border-color:var(--g);color:var(--g)}.abtn.yes:hover,.abtn.yes.sel{background:var(--g);color:#0c0c0e}
+.abtn.no{border-color:var(--r);color:var(--r)}.abtn.no:hover,.abtn.no.sel{background:var(--r);color:#0c0c0e}
+.abtn.partial{border-color:var(--am);color:var(--am)}.abtn.partial:hover,.abtn.partial.sel{background:var(--am);color:#0c0c0e}
+.abtn.tbd{border-color:var(--bl);color:var(--bl)}.abtn.tbd:hover,.abtn.tbd.sel{background:var(--bl);color:#0c0c0e}
+.xin{margin-top:10px;animation:fu .2s ease both}
+.tbd-hint{margin-top:7px;font-size:11px;color:var(--bl);opacity:.85}
+.prog-wrap{margin-bottom:28px}
+.prog-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:7px}
+.prog-bar{height:3px;background:var(--b);border-radius:2px}
+.prog-fill{height:100%;background:var(--a);border-radius:2px;transition:width .4s ease}
+.mx-wrap{overflow-x:auto;margin-top:20px;max-height:70vh;overflow-y:auto}
+.mx-tbl{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+.mx-tbl th{background:var(--s2);padding:9px 13px;text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:2}
+.mx-tbl thead tr:nth-child(2) td{position:sticky;top:37px;z-index:2;background:#0c0c0e;border-bottom:1px solid var(--b)}
+.mx-tbl th:first-child{position:sticky;left:0;top:0;z-index:4;background:var(--s2);border-right:2px solid var(--b)}
+.mx-tbl td{padding:9px 13px;border-bottom:1px solid var(--b);vertical-align:middle;color:var(--t)}
+.mx-tbl td:first-child{position:sticky;left:0;z-index:1;background:var(--s);font-weight:600;border-right:2px solid var(--b)}
+.mx-tbl thead tr:nth-child(2) td:first-child{position:sticky;left:0;top:37px;z-index:3;background:#0c0c0e;border-right:2px solid var(--b)}
+.mx-tbl tr:last-child td{border-bottom:none}
+.mx-tbl tr:hover td{background:var(--s2)}
+.mx-tbl tr:hover td:first-child{background:var(--s2)}
+.chip{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:6px;font-size:12px;font-weight:600}
+.chip.yes{background:rgba(111,207,138,.15);color:var(--g)}
+.chip.no{background:rgba(232,125,125,.15);color:var(--r)}
+.chip.partial{background:rgba(232,185,125,.15);color:var(--am)}
+.chip.tbd{background:rgba(125,184,232,.18);color:var(--bl)}
+.chip.empty{background:transparent;color:var(--t3)}
+.ctip{position:relative;display:inline-block}
+.ctip .tt{visibility:hidden;opacity:0;position:absolute;z-index:10;bottom:120%;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--b);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--t);white-space:pre-wrap;min-width:130px;max-width:210px;text-align:left;transition:opacity .15s;line-height:1.6}
+.ctip:hover .tt{visibility:visible;opacity:1}
+.stats{display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.sbox{flex:1;min-width:80px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:14px;text-align:center}
+.snum{font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--t)}
+.slb{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-top:2px}
+.snum.g{color:var(--g)}.snum.am{color:var(--am)}.snum.gold{color:var(--a)}.snum.bl{color:var(--bl)}
+.evitem{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:14px 18px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.evname{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--t)}
+.evmeta{font-size:11px;color:var(--t2);margin-top:3px;line-height:1.8}
+.tabs{display:flex;gap:4px;margin-bottom:28px;background:var(--s2);border-radius:10px;padding:4px;flex-wrap:wrap}
+.tab{flex:1;min-width:60px;padding:9px;text-align:center;cursor:pointer;border-radius:8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);transition:all .2s;border:none;background:transparent;font-family:'DM Mono',monospace}
+.tab.on{background:var(--s);color:var(--a)}
+.alert{padding:11px 15px;border-radius:8px;font-size:12px;margin-bottom:14px;border:1px solid}
+.ok{background:rgba(111,207,138,.08);border-color:rgba(111,207,138,.3);color:var(--g)}
+.er{background:rgba(232,125,125,.08);border-color:rgba(232,125,125,.3);color:var(--r)}
+.div{border:none;border-top:1px solid var(--b);margin:24px 0}
+.dicon{font-size:44px;margin-bottom:14px}
+.sbadge{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;background:rgba(232,201,125,.12);color:var(--a);border-radius:4px;padding:2px 7px;margin-left:7px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--t2)}
+.tag::before{content:'◆';font-size:7px;color:var(--a)}
+.rtag{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--t)}
+.rrem{cursor:pointer;color:var(--t3);font-size:15px;line-height:1;border:none;background:none;padding:0}.rrem:hover{color:var(--r)}
+.dslot{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:14px;margin-bottom:10px}
+.trow{display:flex;align-items:center;gap:9px;margin-bottom:10px;cursor:pointer;user-select:none}
+.tbox{width:15px;height:15px;border:1px solid var(--b);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;background:var(--s2);flex-shrink:0}
+.tbox.on{background:var(--a);border-color:var(--a);color:#0c0c0e}
+.tbd-banner{font-size:11px;color:var(--bl);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase;background:rgba(125,184,232,.08);border:1px solid rgba(125,184,232,.2);border-radius:6px;padding:7px 11px}
+.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-top:14px}
+.cbtn{display:flex;align-items:center;gap:9px;padding:11px 14px;border-radius:9px;border:1px solid var(--b);background:var(--s2);cursor:pointer;transition:all .15s;text-decoration:none;color:var(--t);font-family:'DM Mono',monospace;font-size:12px}
+.cbtn:hover{border-color:var(--a);transform:translateY(-2px)}
+.cicon{font-size:19px;flex-shrink:0}
+.cname{font-size:11px;letter-spacing:.05em}
+.cevrow{display:flex;justify-content:space-between;align-items:center;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:9px 13px;font-size:12px;margin-bottom:7px}
+.mx-clbar{display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.arch-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.arch-tbl th{background:var(--s2);padding:8px 11px;text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--b)}
+.arch-tbl td{padding:8px 11px;border-bottom:1px solid var(--b);color:var(--t)}
+.arch-tbl tr:last-child td{border-bottom:none}
+.out-block{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:11px 15px;margin-bottom:9px}
+.tour-overlay{position:fixed;inset:0;z-index:2000;pointer-events:none}
+.tour-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);pointer-events:all}
+.tour-box{position:fixed;z-index:2010;background:var(--s);border:1px solid var(--a);border-radius:12px;padding:22px 24px;max-width:320px;pointer-events:all;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.tour-step-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--a);margin-bottom:6px}
+.tour-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--t);margin-bottom:8px}
+.tour-body{font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:16px}
+.tour-nav{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tour-dots{display:flex;gap:5px}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--b)}
+.tour-dot.on{background:var(--a)}
+.tour-highlight{position:fixed;z-index:1999;border-radius:8px;box-shadow:0 0 0 4px var(--a),0 0 0 9999px rgba(0,0,0,.7);pointer-events:none;transition:all .3s ease}
 </head>
 <body>
 <div id="root"></div>
-<script>
-// No Firebase, no JSX, no Babel — plain JS only
-const e = React.createElement;
-function App() {
-  const [count, setCount] = React.useState(0);
-  return e('div', {style:{textAlign:'center'}},
-    e('h1', {style:{fontSize:32,marginBottom:16}}, 'It works!'),
-    e('p', {style:{marginBottom:16,color:'#9a9590'}}, 'React is running. Count: ' + count),
-    e('button', {
-      onClick: () => setCount(c => c+1),
-      style:{background:'#e8c97d',color:'#0c0c0e',border:'none',padding:'10px 24px',borderRadius:8,cursor:'pointer',fontFamily:'monospace',fontSize:14}
-    }, 'Click me')
-  );
+<script>const {
+  useState,
+  useEffect,
+  useRef
+} = React;
+
+// ── Firestore helpers ─────────────────────────────────────────────────────────
+const COL = "elim-coordinator";
+let db, fsDoc, fsGet, fsSet;
+function waitForFS() {
+  return new Promise((res, rej) => {
+    if (window._fsReady) {
+      db = window._db; fsDoc = window._fsDoc; fsGet = window._fsGet; fsSet = window._fsSet;
+      res();
+    } else {
+      const t = setTimeout(() => rej(new Error("Firebase failed to load — check network or browser extensions")), 4000);
+      document.addEventListener("fs-ready", () => {
+        clearTimeout(t);
+        db = window._db; fsDoc = window._fsDoc; fsGet = window._fsGet; fsSet = window._fsSet;
+        res();
+      }, { once: true });
+    }
+  });
 }
-ReactDOM.createRoot(document.getElementById('root')).render(e(App, null));
+async function fsLoad() {
+  await waitForFS();
+  try {
+    const snap = await fsGet(fsDoc(db, COL, "appdata"));
+    if (!snap.exists()) return {
+      events: [],
+      expectedNames: [],
+      responses: {},
+      archivedEvents: []
+    };
+    const d = snap.data();
+    // Sanitise — ensure all fields are the right type so bad data never crashes the app
+    return {
+      events: Array.isArray(d.events) ? d.events : [],
+      expectedNames: Array.isArray(d.expectedNames) ? d.expectedNames : [],
+      responses: d.responses && typeof d.responses === "object" && !Array.isArray(d.responses) ? d.responses : {},
+      archivedEvents: Array.isArray(d.archivedEvents) ? d.archivedEvents : []
+    };
+  } catch (e) {
+    console.error("Firestore load error:", e);
+    return {
+      events: [],
+      expectedNames: [],
+      responses: {},
+      archivedEvents: [],
+      _loadError: e.message
+    };
+  }
+}
+async function fsReset() {
+  await waitForFS();
+  await fsSet(fsDoc(db, COL, "appdata"), {
+    events: [],
+    expectedNames: [],
+    responses: {},
+    archivedEvents: []
+  }, {
+    merge: false
+  });
+}
+async function fsSave(d) {
+  await waitForFS();
+  await fsSet(fsDoc(db, COL, "appdata"), {
+    events: d.events || [],
+    expectedNames: d.expectedNames || [],
+    responses: d.responses || {},
+    archivedEvents: d.archivedEvents || []
+  }, {
+    merge: false
+  });
+}
+async function fsGetPassword() {
+  await waitForFS();
+  const snap = await fsGet(fsDoc(db, "config", "settings"));
+  if (!snap.exists()) return "admin123";
+  return snap.data().adminPassword || "admin123";
+}
+async function fsSetPassword(pw) {
+  await waitForFS();
+  await fsSet(fsDoc(db, "config", "settings"), {
+    adminPassword: pw
+  }, {
+    merge: true
+  });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+const gid = () => Math.random().toString(36).slice(2, 10);
+function fmtDate(d) {
+  if (!d) return "";
+  const [y, m, day] = d.split("-");
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+function fmtTime(s) {
+  if (!s) return s;
+  const [h, m] = s.split(":");
+  const ap = +h >= 12 ? "pm" : "am";
+  return `${+h % 12 || 12}:${m}${ap}`;
+}
+function slotTime(s) {
+  return s.allDay ? "All Day" : `${fmtTime(s.eventTime)} – ${fmtTime(s.leaveTime)}`;
+}
+
+// ── Archive helpers ───────────────────────────────────────────────────────────
+function isPast(ev) {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return ev.days.every(d => new Date(d.date) < t);
+}
+function lastDate(ev) {
+  return ev.days.map(d => d.date).sort().at(-1);
+}
+function purge(data) {
+  const cut = new Date();
+  cut.setFullYear(cut.getFullYear() - 1);
+  const keep = (data.archivedEvents || []).filter(ev => new Date(lastDate(ev)) >= cut);
+  return keep.length === (data.archivedEvents || []).length ? data : {
+    ...data,
+    archivedEvents: keep
+  };
+}
+function archive(data) {
+  const past = data.events.filter(isPast);
+  if (!past.length) return data;
+  const ids = new Set(past.map(e => e.id));
+  return {
+    ...data,
+    events: data.events.filter(e => !ids.has(e.id)),
+    archivedEvents: [...(data.archivedEvents || []), ...past.filter(p => !(data.archivedEvents || []).some(a => a.id === p.id))]
+  };
+}
+
+// ── Calendar helpers ──────────────────────────────────────────────────────────
+function icsDate(d, t) {
+  const [y, m, day] = d.split("-");
+  if (!t) return `${y}${m}${day}`;
+  const [h, mi] = t.split(":");
+  return `${y}${m}${day}T${h}${mi}00`;
+}
+function nextDay(d) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + 1);
+  return x.toISOString().slice(0, 10).replace(/-/g, "");
+}
+function buildICS(evs) {
+  const uid = () => Math.random().toString(36).slice(2) + "@ec";
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ElimCoordinator//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  for (const e of evs) {
+    lines.push("BEGIN:VEVENT", `UID:${uid()}`, `SUMMARY:${e.name}${e.partial ? " (Partial)" : ""}`, `LOCATION:${e.location}`);
+    if (e.allDay) {
+      lines.push(`DTSTART;VALUE=DATE:${e.date.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${nextDay(e.date)}`);
+    } else {
+      lines.push(`DTSTART:${icsDate(e.date, e.eventTime)}`, `DTEND:${icsDate(e.date, e.leaveTime)}`);
+    }
+    if (e.partial && e.note) lines.push(`DESCRIPTION:Partial — ${e.note}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+function dlICS(evs) {
+  const b = new Blob([buildICS(evs)], {
+    type: "text/calendar"
+  });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u;
+  a.download = "events.ics";
+  a.click();
+  URL.revokeObjectURL(u);
+}
+function gcal(e) {
+  const f = (d, t) => {
+    const [y, m, day] = d.split("-");
+    if (!t) return `${y}${m}${day}`;
+    const [h, mi] = t.split(":");
+    return `${y}${m}${day}T${h}${mi}00`;
+  };
+  const dates = e.allDay ? `${f(e.date)}/${nextDay(e.date)}` : `${f(e.date, e.eventTime)}/${f(e.date, e.leaveTime)}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(e.name + (e.partial ? " (Partial)" : ""))}&dates=${dates}&location=${encodeURIComponent(e.location)}&details=${encodeURIComponent(e.partial && e.note ? `Partial — ${e.note}` : "")}`;}
+function outlook(e) {
+  const f = (d, t) => t ? `${d}T${t}:00` : d;
+  const end = e.allDay ? new Date(e.date + "T00:00:00").toISOString().slice(0, 10).replace(/-/g, "") + ":00" : f(e.date, e.leaveTime);
+  return `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(e.name + (e.partial ? " (Partial)" : ""))}&startdt=${f(e.date, e.allDay ? null : e.eventTime)}&enddt=${end}&location=${encodeURIComponent(e.location)}&allday=${!!e.allDay}`;
+}
+function yahoo(e) {
+  const f = (d, t) => {
+    const [y, m, day] = d.split("-");
+    if (!t) return `${y}${m}${day}`;
+    const [h, mi] = t.split(":");
+    return `${y}${m}${day}T${h}${mi}00`;
+  };
+  return `https://calendar.yahoo.com/?v=60&title=${encodeURIComponent(e.name + (e.partial ? " (Partial)" : ""))}&st=${f(e.date, e.allDay ? null : e.eventTime)}&et=${e.allDay ? nextDay(e.date) : f(e.date, e.leaveTime)}&in_loc=${encodeURIComponent(e.location)}`;
+}
+function teams(e) {
+  const f = (d, t) => t ? `${d}T${t}:00` : `${d}T00:00:00`;
+  const end = e.allDay ? new Date(e.date).toISOString().slice(0, 16) : f(e.date, e.leaveTime);
+  return `https://teams.microsoft.com/l/meeting/new?subject=${encodeURIComponent(e.name + (e.partial ? " (Partial)" : ""))}&startTime=${encodeURIComponent(f(e.date, e.allDay ? null : e.eventTime))}&endTime=${encodeURIComponent(end)}&content=${encodeURIComponent(e.location)}`;
+}
+function openAll(urlFn, evs) {
+  evs.forEach((e, i) => setTimeout(() => window.open(urlFn(e), "_blank"), i * 350));
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [data, setData] = useState(null);
+  const [view, setView] = useState("landing");
+  const [user, setUser] = useState("");
+  const [tab, setTab] = useState("matrix");
+  const [mode, setMode] = useState("pending");
+  const [loadErr, setLoadErr] = useState(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const dataLoaded = useRef(false);
+  useEffect(() => {
+    // Hard fallback — show app after 5s no matter what
+    const fallback = setTimeout(() => {
+      if (!dataLoaded.current) {
+        dataLoaded.current = true;
+        setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
+        setLoadErr("Could not reach Firestore. Check your connection or browser settings.");
+      }
+    }, 5000);
+    fsLoad().then(d => {
+      clearTimeout(fallback);
+      dataLoaded.current = true;
+      if (d._loadError) {
+        setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
+        setLoadErr(d._loadError);
+        return;
+      }
+      d = purge(archive(d));
+      setData(d);
+    }).catch(e => {
+      clearTimeout(fallback);
+      dataLoaded.current = true;
+      setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
+      setLoadErr(e.message);
+    });
+    return () => clearTimeout(fallback);
+  }, []);
+  const persist = async nd => {
+    nd = purge(archive(nd));
+    setData(nd);
+    try {
+      await fsSave(nd);
+    } catch (e) {
+      console.error("Save error:", e);
+    }
+  };
+  if (loadErr || timedOut) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "100vh",
+      color: "#f0ede6",
+      fontFamily: "DM Mono,monospace",
+      fontSize: 13,
+      background: "#0c0c0e",
+      gap: 16,
+      padding: 24,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      marginBottom: 4
+    }
+  }, "\u26A0\uFE0F"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Playfair Display',serif",
+      fontSize: 22,
+      fontWeight: 700,
+      color: "#f0ede6"
+    }
+  }, "Couldn't connect to Firestore"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#b0ada8",
+      maxWidth: 380,
+      lineHeight: 1.7
+    }
+  }, timedOut && !loadErr ? "Connection timed out. " : "", "This can happen if your browser's tracking prevention is blocking Firebase, or if the Firestore document contains bad data."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => window.location.reload(),
+    style: {
+      padding: "10px 20px",
+      background: "#e8c97d",
+      color: "#0c0c0e",
+      border: "none",
+      borderRadius: 8,
+      fontFamily: "DM Mono,monospace",
+      fontSize: 12,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      cursor: "pointer"
+    }
+  }, "\u21BA Retry"), /*#__PURE__*/React.createElement("button", {
+    onClick: async () => {
+      try {
+        await fsReset();
+        window.location.reload();
+      } catch (e) {
+        alert("Reset failed: " + e.message);
+      }
+    },
+    style: {
+      padding: "10px 20px",
+      background: "transparent",
+      color: "#e87d7d",
+      border: "1px solid #e87d7d",
+      borderRadius: 8,
+      fontFamily: "DM Mono,monospace",
+      fontSize: 12,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      cursor: "pointer"
+    }
+  }, "\uD83D\uDDD1 Reset Data & Retry")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#5a5650",
+      maxWidth: 360,
+      lineHeight: 1.6,
+      marginTop: 4
+    }
+  }, "If you're on Edge, try disabling Tracking Prevention for this site:", /*#__PURE__*/React.createElement("br", null), "Settings \u2192 Privacy \u2192 Tracking Prevention \u2192 Exceptions."), loadErr && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#5a5650",
+      fontFamily: "monospace",
+      maxWidth: 400,
+      wordBreak: "break-all"
+    }
+  }, "Error: ", loadErr));
+  if (!data) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "100vh",
+      color: "#b0ada8",
+      fontFamily: "DM Mono,monospace",
+      fontSize: 13,
+      background: "#0c0c0e"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grain"
+  }), "Loading\u2026");
+  const ConnBanner = () => loadErr ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(232,125,125,.1)",
+      border: "1px solid rgba(232,125,125,.3)",
+      borderRadius: 8,
+      padding: "10px 14px",
+      marginBottom: 16,
+      fontSize: 11,
+      color: "#e87d7d",
+      lineHeight: 1.6,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\u26A0 Firestore unreachable \u2014 changes won't be saved. Try Chrome/Firefox, or add this site to Edge's tracking prevention exceptions.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      opacity: .7
+    }
+  }, loadErr)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => window.location.reload(),
+    style: {
+      background: "none",
+      border: "1px solid #e87d7d",
+      borderRadius: 6,
+      color: "#e87d7d",
+      fontFamily: "DM Mono,monospace",
+      fontSize: 10,
+      padding: "4px 10px",
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "Retry")) : null;
+  const slots = data.events.flatMap(ev => ev.days.map(d => ({
+    eventId: ev.id,
+    eventName: ev.name,
+    location: ev.location,
+    ...d
+  })));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "app"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "grain"
+  }), /*#__PURE__*/React.createElement(ConnBanner, null), /*#__PURE__*/React.createElement(Hdr, {
+    view: view,
+    setView: setView,
+    setUser: setUser
+  }), view === "landing" && /*#__PURE__*/React.createElement(Landing, {
+    setView: setView
+  }), view === "form" && /*#__PURE__*/React.createElement(UForm, {
+    setView: setView,
+    setUser: setUser,
+    setMode: setMode,
+    data: data,
+    slots: slots,
+    names: data.expectedNames || []
+  }), view === "survey" && /*#__PURE__*/React.createElement(USurvey, {
+    name: user,
+    data: data,
+    slots: slots,
+    persist: persist,
+    setView: setView,
+    mode: mode
+  }), view === "done" && /*#__PURE__*/React.createElement(UDone, {
+    name: user,
+    setView: setView,
+    data: data,
+    slots: slots
+  }), view === "alog" && /*#__PURE__*/React.createElement(AdminLogin, {
+    setView: setView
+  }), view === "admin" && /*#__PURE__*/React.createElement(Admin, {
+    data: data,
+    persist: persist,
+    slots: slots,
+    tab: tab,
+    setTab: setTab
+  }));
+}
+function Hdr({
+  view,
+  setView,
+  setUser
+}) {
+  const isA = view === "admin" || view === "alog";
+  return /*#__PURE__*/React.createElement("div", {
+    className: "header"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "logo"
+  }, "Elim Coordinator"), isA ? /*#__PURE__*/React.createElement("button", {
+    className: "alink",
+    onClick: () => setView("landing")
+  }, "\u2190 Public") : /*#__PURE__*/React.createElement("button", {
+    className: "alink",
+    onClick: () => {
+      setUser("");
+      setView("alog");
+    }
+  }, "Admin \u2192"));
+}
+function Landing({
+  setView
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Welcome"), /*#__PURE__*/React.createElement("h1", {
+    className: "hl"
+  }, "Let's find out", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("em", null, "who's available.")), /*#__PURE__*/React.createElement("p", {
+    className: "sub"
+  }, "Enter your name to see upcoming events and let us know your availability."), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: () => setView("form")
+  }, "Get Started \u2192"));
+}
+
+// ── Name combobox ─────────────────────────────────────────────────────────────
+function NameBox({
+  value,
+  onChange,
+  names,
+  onValid
+}) {
+  const [open, setOpen] = useState(false);
+  const [fi, setFi] = useState(-1);
+  const ref = useRef(null);
+  const lower = value.toLowerCase().trim();
+  const filtered = lower ? names.filter(n => n.toLowerCase().includes(lower) && n.toLowerCase() !== lower) : names;
+  const exact = names.some(n => n.toLowerCase() === lower);
+  const show = open && filtered.length > 0 && !exact;
+  useEffect(() => {
+    onValid(exact ? names.find(n => n.toLowerCase() === lower) : null);
+  }, [value]);
+  useEffect(() => {
+    const h = e => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  const pick = n => {
+    onChange(n);
+    setOpen(false);
+    setFi(-1);
+  };
+  const onKey = e => {
+    if (!show) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") setOpen(true);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setFi(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFi(i => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && fi >= 0) {
+      e.preventDefault();
+      pick(filtered[fi]);
+    } else if (e.key === "Escape") setOpen(false);
+  };
+  const cls = value.trim() === "" ? "" : exact ? "valid" : "invalid";
+  return /*#__PURE__*/React.createElement("div", {
+    className: "name-combo",
+    ref: ref
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    className: cls,
+    placeholder: "Start typing your name\u2026",
+    value: value,
+    autoFocus: true,
+    autoComplete: "off",
+    onChange: e => {
+      onChange(e.target.value);
+      setOpen(true);
+      setFi(-1);
+    },
+    onFocus: () => setOpen(true),
+    onKeyDown: onKey
+  }), show && /*#__PURE__*/React.createElement("div", {
+    className: "ndrop"
+  }, filtered.map((n, i) => /*#__PURE__*/React.createElement("div", {
+    key: n,
+    className: `nopt${i === fi ? " foc" : ""}`,
+    onMouseDown: () => pick(n)
+  }, n))), /*#__PURE__*/React.createElement("div", {
+    className: `nval${value.trim() === "" ? "" : " " + (exact ? "ok" : "err")}`
+  }, value.trim() === "" ? "\u00a0" : exact ? `✓ Welcome, ${value}!` : "Not on the expected list — check spelling."));
+}
+
+// ── User form ─────────────────────────────────────────────────────────────────
+function UForm({
+  setView,
+  setUser,
+  setMode,
+  data,
+  slots,
+  names
+}) {
+  const [raw, setRaw] = useState("");
+  const [valid, setValid] = useState(null);
+  const go = m => {
+    if (!valid) return;
+    setUser(valid);
+    setMode(m);
+    setView("survey");
+  };
+  const SC = {
+    yes: "var(--g)",
+    no: "var(--r)",
+    partial: "var(--am)",
+    tbd: "var(--bl)"
+  };
+  const SL = {
+    yes: "Yes",
+    no: "No",
+    partial: "Partial",
+    tbd: "TBD"
+  };
+  const answered = valid ? slots.filter(s => data.responses[`${s.id}::${valid.toLowerCase()}`]) : [];
+  const pending = valid ? slots.filter(s => {
+    const r = data.responses[`${s.id}::${valid.toLowerCase()}`];
+    return !r || r.status === "tbd";
+  }) : [];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Step 1 of 2"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 26
+    }
+  }, "What's your name?"), /*#__PURE__*/React.createElement("p", {
+    className: "sub"
+  }, "Select your name to continue."), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Full Name"), /*#__PURE__*/React.createElement(NameBox, {
+    value: raw,
+    onChange: setRaw,
+    names: names,
+    onValid: setValid
+  })), valid && answered.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      color: "var(--t3)",
+      marginBottom: 9
+    }
+  }, "Your current responses"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 5,
+      marginBottom: 14
+    }
+  }, slots.map(s => {
+    const r = data.responses[`${s.id}::${valid.toLowerCase()}`];
+    const multi = data.events.find(e => e.id === s.eventId)?.days.length > 1;
+    return /*#__PURE__*/React.createElement("div", {
+      key: s.id,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: "var(--s2)",
+        border: "1px solid var(--b)",
+        borderRadius: 7,
+        padding: "7px 12px",
+        fontSize: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t)"
+      }
+    }, s.eventName, multi ? ` · Day ${s.dayLabel}` : "", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t3)",
+        fontSize: 11,
+        marginLeft: 5
+      }
+    }, fmtDate(s.date))), r ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: SC[r.status],
+        fontWeight: 600,
+        fontSize: 11
+      }
+    }, SL[r.status]) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t3)",
+        fontSize: 11
+      }
+    }, "\u2013"));
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      width: "100%",
+      justifyContent: "center",
+      marginBottom: 8
+    },
+    onClick: () => go("update")
+  }, "\u270F Update My Availability")), pending.length > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    disabled: !valid,
+    onClick: () => go("pending")
+  }, answered.length > 0 ? `Answer ${pending.length} New Event${pending.length > 1 ? "s" : ""}` : "Continue →"), valid && pending.length === 0 && answered.length === 0 && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: "var(--t3)"
+    }
+  }, "No events to respond to yet."));
+}
+
+// ── User survey ───────────────────────────────────────────────────────────────
+function USurvey({
+  name,
+  data,
+  slots,
+  persist,
+  setView,
+  mode
+}) {
+  const [idx, setIdx] = useState(0);
+  const [sel, setSel] = useState(null);
+  const [extra, setExtra] = useState("");
+  const [saving, setSaving] = useState(false);
+  const prev = useRef(-1);
+  const target = mode === "update" ? slots : slots.filter(s => {
+    const r = data.responses[`${s.id}::${name.toLowerCase()}`];
+    return !r || r.status === "tbd";
+  });
+  const slot = target[idx];
+  const er = slot ? data.responses[`${slot.id}::${name.toLowerCase()}`] : null;
+  useEffect(() => {
+    if (prev.current === idx) return;
+    prev.current = idx;
+    if (mode === "update" && er) {
+      setSel(er.status);
+      setExtra(er.note || "");
+    } else {
+      setSel(null);
+      setExtra("");
+    }
+  }, [idx]);
+  if (!target.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "dicon"
+  }, "\u2713"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 22
+    }
+  }, "All caught up!"), /*#__PURE__*/React.createElement("p", {
+    className: "sub",
+    style: {
+      margin: "0 auto 22px"
+    }
+  }, "You've responded to all current events, ", name, "."), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    onClick: () => setView("form")
+  }, "\u2190 Back"));
+  const isTbd = mode === "pending" && er?.status === "tbd";
+  const multi = data.events.find(e => e.id === slot.eventId)?.days.length > 1;
+  const canSave = sel && (sel !== "partial" || extra.trim());
+  const SC = {
+    yes: "var(--g)",
+    no: "var(--r)",
+    partial: "var(--am)",
+    tbd: "var(--bl)"
+  };
+  const save2 = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    const key = `${slot.id}::${name.toLowerCase()}`;
+    const note = sel === "partial" || sel === "tbd" ? extra.trim() : "";
+    const nr = {
+      ...data.responses,
+      [key]: {
+        name,
+        slotId: slot.id,
+        eventId: slot.eventId,
+        status: sel,
+        note,
+        timestamp: Date.now()
+      }
+    };
+    await persist({
+      ...data,
+      responses: nr
+    });
+    setSaving(false);
+    if (idx + 1 >= target.length) {
+      setView("done");
+      return;
+    }
+    const nx = target[idx + 1];
+    const nxr = nr[`${nx.id}::${name.toLowerCase()}`];
+    if (mode === "update" && nxr) {
+      setSel(nxr.status);
+      setExtra(nxr.note || "");
+    } else {
+      setSel(null);
+      setExtra("");
+    }
+    setIdx(idx + 1);
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "prog-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prog-meta"
+  }, /*#__PURE__*/React.createElement("span", null, mode === "update" ? `Editing ${idx + 1} of ${target.length}` : isTbd ? "↻ Updating TBD" : `Question ${idx + 1} of ${target.length}`), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--a)"
+    }
+  }, name)), /*#__PURE__*/React.createElement("div", {
+    className: "prog-bar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prog-fill",
+    style: {
+      width: `${idx / target.length * 100}%`
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "acard"
+  }, isTbd && /*#__PURE__*/React.createElement("div", {
+    className: "tbd-banner"
+  }, "\u25CC Previously TBD", er.note ? ` — "${er.note}"` : "", " \u2014 please update"), mode === "update" && er && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)",
+      marginBottom: 9
+    }
+  }, "Current: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600,
+      color: SC[er.status]
+    }
+  }, er.status.toUpperCase(), er.note ? ` — "${er.note}"` : "")), /*#__PURE__*/React.createElement("div", {
+    className: "ename"
+  }, slot.eventName, multi && /*#__PURE__*/React.createElement("span", {
+    className: "sbadge"
+  }, "Day ", slot.dayLabel)), /*#__PURE__*/React.createElement("div", {
+    className: "emeta"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "tag"
+  }, slot.location), "\xA0", /*#__PURE__*/React.createElement("span", {
+    className: "tag"
+  }, fmtDate(slot.date)), "\xA0", /*#__PURE__*/React.createElement("span", {
+    className: "tag"
+  }, slotTime(slot))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: "var(--t2)",
+      marginBottom: 14
+    }
+  }, "Are you available?"), /*#__PURE__*/React.createElement("div", {
+    className: "abtns"
+  }, [["yes", "✓ Yes"], ["no", "✗ No"], ["partial", "◑ Partial"], ["tbd", "? TBD"]].map(([id, lbl]) => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    className: `abtn ${id}${sel === id ? " sel" : ""}`,
+    onClick: () => {
+      setSel(id);
+      if (id !== "partial" && id !== "tbd") setExtra("");
+    }
+  }, lbl))), sel === "partial" && /*#__PURE__*/React.createElement("div", {
+    className: "xin"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Describe your availability"), /*#__PURE__*/React.createElement("textarea", {
+    placeholder: "e.g. Available after 3pm\u2026",
+    value: extra,
+    onChange: e => setExtra(e.target.value)
+  }))), sel === "tbd" && /*#__PURE__*/React.createElement("div", {
+    className: "xin"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Reason (optional)"), /*#__PURE__*/React.createElement("textarea", {
+    placeholder: "e.g. Waiting on a conflict\u2026",
+    value: extra,
+    onChange: e => setExtra(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "tbd-hint"
+  }, "You can return anytime to update TBD responses.")), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: save2,
+    disabled: saving || !canSave
+  }, saving ? "Saving…" : idx + 1 < target.length ? "Save & Next →" : "Submit →"), idx > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    onClick: () => setIdx(idx - 1)
+  }, "\u2190 Back"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    onClick: () => setView("form")
+  }, "Cancel"))));
+}
+
+// ── User done + calendar ──────────────────────────────────────────────────────
+function UDone({
+  name,
+  setView,
+  data,
+  slots
+}) {
+  const evs = slots.flatMap(s => {
+    const r = data.responses[`${s.id}::${name.toLowerCase()}`];
+    if (!r || r.status !== "yes" && r.status !== "partial") return [];
+    return [{
+      name: s.eventName,
+      location: s.location,
+      date: s.date,
+      eventTime: s.eventTime,
+      leaveTime: s.leaveTime,
+      allDay: s.allDay || false,
+      partial: r.status === "partial",
+      note: r.note
+    }];
+  });
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      textAlign: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "dicon"
+  }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 26
+    }
+  }, "Thank you, ", name, "!"), /*#__PURE__*/React.createElement("p", {
+    className: "sub",
+    style: {
+      margin: "0 auto 0"
+    }
+  }, "Availability recorded. Return anytime to update TBD responses.")), evs.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Optional"), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontFamily: "'Playfair Display',serif",
+      fontSize: 19,
+      marginBottom: 5,
+      color: "var(--t)"
+    }
+  }, "Add to your calendar"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)",
+      marginBottom: 4,
+      lineHeight: 1.7
+    }
+  }, "You said yes or partial to ", evs.length, " event", evs.length > 1 ? "s" : "", "."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, evs.map((e, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "cevrow"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--t)"
+    }
+  }, e.name, e.partial && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--am)",
+      fontSize: 10,
+      marginLeft: 6,
+      textTransform: "uppercase",
+      letterSpacing: ".07em"
+    }
+  }, "\u25D1 partial"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--t3)",
+      fontSize: 11
+    }
+  }, fmtDate(e.date), e.allDay ? " · All Day" : e.eventTime ? ` · ${fmtTime(e.eventTime)}` : "")))), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      color: "var(--t3)",
+      marginBottom: 11
+    }
+  }, "Choose your calendar"), /*#__PURE__*/React.createElement("div", {
+    className: "cal-grid"
+  }, [["📅", "Google Calendar", gcal], ["📆", "Outlook Web", outlook], ["🗓", "Yahoo Calendar", yahoo], ["💬", "Microsoft Teams", teams]].map(([icon, lbl, fn]) => /*#__PURE__*/React.createElement("a", {
+    key: lbl,
+    className: "cbtn",
+    href: evs.length === 1 ? fn(evs[0]) : "#",
+    onClick: evs.length > 1 ? e2 => {
+      e2.preventDefault();
+      openAll(fn, evs);
+    } : undefined,
+    target: "_blank",
+    rel: "noopener noreferrer"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cicon"
+  }, icon), /*#__PURE__*/React.createElement("div", {
+    className: "cname"
+  }, lbl))), /*#__PURE__*/React.createElement("button", {
+    className: "cbtn",
+    onClick: () => dlICS(evs)
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cicon"
+  }, "\u2B07"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "cname"
+  }, "Download .ics"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)"
+    }
+  }, "Apple \xB7 Outlook app")))), evs.length > 1 && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11,
+      color: "var(--t3)",
+      marginTop: 10,
+      lineHeight: 1.6
+    }
+  }, "Google, Outlook, Yahoo & Teams open one tab per event.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    onClick: () => setView("landing")
+  }, "\u2190 Back to Start")));
+}
+
+// ── Admin login ───────────────────────────────────────────────────────────────
+function AdminLogin({
+  setView
+}) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const go = async () => {
+    if (!pw) return;
+    setLoading(true);
+    const stored = await fsGetPassword();
+    if (pw === stored) {
+      setErr(false);
+      setView("admin");
+    } else {
+      setErr(true);
+    }
+    setLoading(false);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      maxWidth: 400
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Admin Access"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 24
+    }
+  }, "Sign in"), /*#__PURE__*/React.createElement("p", {
+    className: "sub"
+  }, "Enter the admin password."), err && /*#__PURE__*/React.createElement("div", {
+    className: "alert er"
+  }, "Incorrect password."), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Password"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    value: pw,
+    onChange: e => {
+      setPw(e.target.value);
+      setErr(false);
+    },
+    onKeyDown: e => e.key === "Enter" && go()
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: go,
+    disabled: !pw || loading
+  }, loading ? "Checking…" : "Enter Portal →"));
+}
+
+// ── Tour ──────────────────────────────────────────────────────────────────────
+const TOUR_STEPS = [{
+  tab: null,
+  title: "Welcome to the Dashboard",
+  body: "This is the admin portal for Elim Coordinator. Let's walk through each section so you know where everything is.",
+  anchor: null
+}, {
+  tab: "matrix",
+  title: "Availability Matrix",
+  body: "See everyone's availability at a glance. Names are frozen on the left as you scroll right. Hover any chip to see notes. Use the Clear buttons to reset responses for an event.",
+  anchor: "[data-tour='matrix']"
+}, {
+  tab: "outstanding",
+  title: "Outstanding Responses",
+  body: "Quickly see who hasn't responded yet and who still has a TBD answer, broken down per event.",
+  anchor: "[data-tour='outstanding']"
+}, {
+  tab: "results",
+  title: "Results",
+  body: "Browse responses event by event. Search by event name, location, or date. Single-day events show a flat list; multi-day events show a table.",
+  anchor: "[data-tour='results']"
+}, {
+  tab: "roster",
+  title: "Roster",
+  body: "Manage who can fill out the form. Only people on this list will appear in the name dropdown on the public form.",
+  anchor: "[data-tour='roster']"
+}, {
+  tab: "events",
+  title: "Manage Events",
+  body: "View, edit, or delete events. Events are sorted by date. Past events automatically move to the Archive.",
+  anchor: "[data-tour='events']"
+}, {
+  tab: "create",
+  title: "Create Event",
+  body: "Add a new event with a name, location, and one or more days. Each day can have specific times or be marked All Day. Multi-day events are asked separately in the survey.",
+  anchor: "[data-tour='create']"
+}, {
+  tab: "archive",
+  title: "Archive",
+  body: "Past events live here for one year, then are automatically deleted. Search by event name or person name.",
+  anchor: "[data-tour='archive']"
+}, {
+  tab: "settings",
+  title: "Settings",
+  body: "Change the admin password here. The password is stored securely in Firestore — not in the source code.",
+  anchor: "[data-tour='settings']"
+}];
+function Tour({
+  onClose,
+  setTab
+}) {
+  const [step, setStep] = useState(0);
+  const s = TOUR_STEPS[step];
+  useEffect(() => {
+    if (s.tab) setTab(s.tab);
+  }, [step]);
+  const next = () => {
+    if (step < TOUR_STEPS.length - 1) setStep(step + 1);else onClose();
+  };
+  const prev = () => {
+    if (step > 0) setStep(step - 1);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "tour-overlay"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tour-backdrop",
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "tour-box",
+    style: {
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%,-50%)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tour-step-label"
+  }, "Step ", step + 1, " of ", TOUR_STEPS.length), /*#__PURE__*/React.createElement("div", {
+    className: "tour-title"
+  }, s.title), /*#__PURE__*/React.createElement("div", {
+    className: "tour-body"
+  }, s.body), /*#__PURE__*/React.createElement("div", {
+    className: "tour-nav"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tour-dots"
+  }, TOUR_STEPS.map((_, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: `tour-dot${i === step ? " on" : ""}`
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, step > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 14px",
+      fontSize: 11
+    },
+    onClick: prev
+  }, "\u2190 Back"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 14px",
+      fontSize: 11,
+      color: "var(--r)",
+      borderColor: "var(--r)"
+    },
+    onClick: onClose
+  }, "End Tour"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    style: {
+      padding: "7px 18px",
+      fontSize: 11
+    },
+    onClick: next
+  }, step < TOUR_STEPS.length - 1 ? "Next →" : "Done ✓"))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: {
+      position: "absolute",
+      top: 12,
+      right: 14,
+      background: "none",
+      border: "none",
+      color: "var(--t3)",
+      cursor: "pointer",
+      fontSize: 16
+    }
+  }, "\xD7")));
+}
+
+// ── Admin portal ──────────────────────────────────────────────────────────────
+function Admin({
+  data,
+  persist,
+  slots,
+  tab,
+  setTab
+}) {
+  const [touring, setTouring] = useState(false);
+  const TABS = [["matrix", "Matrix"], ["outstanding", "Outstanding"], ["results", "Results"], ["roster", "Roster"], ["events", "Events"], ["create", "Create"], ["archive", "Archive"], ["settings", "Settings"]];
+  return /*#__PURE__*/React.createElement("div", null, touring && /*#__PURE__*/React.createElement(Tour, {
+    onClose: () => setTouring(false),
+    setTab: setTab
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      flexWrap: "wrap",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Admin Portal"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 24
+    }
+  }, "Dashboard")), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      fontSize: 11,
+      padding: "7px 14px"
+    },
+    onClick: () => setTouring(true)
+  }, "\u27F3 Take a Tour")), /*#__PURE__*/React.createElement("div", {
+    className: "tabs"
+  }, TABS.map(([id, lbl]) => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    "data-tour": id,
+    className: `tab${tab === id ? " on" : ""}`,
+    onClick: () => setTab(id)
+  }, lbl))), tab === "matrix" && /*#__PURE__*/React.createElement(Matrix, {
+    data: data,
+    slots: slots,
+    persist: persist
+  }), tab === "outstanding" && /*#__PURE__*/React.createElement(Outstanding, {
+    data: data,
+    slots: slots
+  }), tab === "results" && /*#__PURE__*/React.createElement(Results, {
+    data: data,
+    slots: slots
+  }), tab === "roster" && /*#__PURE__*/React.createElement(Roster, {
+    data: data,
+    persist: persist
+  }), tab === "events" && /*#__PURE__*/React.createElement(Events, {
+    data: data,
+    persist: persist
+  }), tab === "create" && /*#__PURE__*/React.createElement(Create, {
+    data: data,
+    persist: persist,
+    onDone: () => setTab("events")
+  }), tab === "archive" && /*#__PURE__*/React.createElement(Archive, {
+    data: data,
+    persist: persist
+  }), tab === "settings" && /*#__PURE__*/React.createElement(Settings, null));
+}
+
+// ── Settings (change password) ────────────────────────────────────────────────
+function Settings() {
+  const [cur, setCur] = useState("");
+  const [nw, setNw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+  const save = async () => {
+    setErr("");
+    setMsg("");
+    if (!cur || !nw || !confirm) {
+      setErr("Fill in all fields.");
+      return;
+    }
+    if (nw !== confirm) {
+      setErr("New passwords don't match.");
+      return;
+    }
+    if (nw.length < 4) {
+      setErr("Password must be at least 4 characters.");
+      return;
+    }
+    setLoading(true);
+    const stored = await fsGetPassword();
+    if (cur !== stored) {
+      setErr("Current password is incorrect.");
+      setLoading(false);
+      return;
+    }
+    await fsSetPassword(nw);
+    setMsg("Password updated.");
+    setCur("");
+    setNw("");
+    setConfirm("");
+    setLoading(false);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      maxWidth: 420
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Admin Settings"), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontFamily: "'Playfair Display',serif",
+      fontSize: 19,
+      marginBottom: 16,
+      color: "var(--t)"
+    }
+  }, "Change Password"), msg && /*#__PURE__*/React.createElement("div", {
+    className: "alert ok"
+  }, msg), err && /*#__PURE__*/React.createElement("div", {
+    className: "alert er"
+  }, err), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Current Password"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: cur,
+    onChange: e => setCur(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "New Password"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: nw,
+    onChange: e => setNw(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Confirm New Password"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: confirm,
+    onChange: e => setConfirm(e.target.value),
+    onKeyDown: e => e.key === "Enter" && save()
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: save,
+    disabled: loading
+  }, loading ? "Saving…" : "Update Password"));
+}
+
+// ── Matrix ────────────────────────────────────────────────────────────────────
+function Matrix({
+  data,
+  slots,
+  persist
+}) {
+  const {
+    responses,
+    expectedNames: en = []
+  } = data;
+  const respNames = new Set(Object.values(responses).map(r => r.name));
+  const names = [...new Set([...en, ...respNames])].sort();
+  if (!slots.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No active events. Create one or check Archive.");
+  if (!names.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No roster or responses yet.");
+  const counts = {};
+  for (const s of slots) {
+    let y = 0,
+      n = 0,
+      p = 0,
+      t = 0;
+    for (const nm of names) {
+      const r = responses[`${s.id}::${nm.toLowerCase()}`];
+      if (r?.status === "yes") y++;else if (r?.status === "no") n++;else if (r?.status === "partial") p++;else if (r?.status === "tbd") t++;
+    }
+    counts[s.id] = {
+      y,
+      n,
+      p,
+      t
+    };
+  }
+  const tbd = Object.values(responses).filter(r => r.status === "tbd").length;
+  const conf = Object.values(responses).filter(r => r.status !== "tbd").length;
+  const evIds = [...new Set(slots.map(s => s.eventId))];
+  const clrEv = async id => {
+    const nm = data.events.find(e => e.id === id)?.name || id;
+    if (!confirm(`Clear responses for "${nm}"?`)) return;
+    const nr = {};
+    for (const [k, v] of Object.entries(responses)) if (v.eventId !== id) nr[k] = v;
+    await persist({
+      ...data,
+      responses: nr
+    });
+  };
+  const clrAll = async () => {
+    if (!confirm("Clear ALL responses?")) return;
+    await persist({
+      ...data,
+      responses: {}
+    });
+  };
+  const IC = {
+    yes: "✓",
+    no: "✗",
+    partial: "◑",
+    tbd: "?"
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "stats"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sbox"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "snum gold"
+  }, names.length), /*#__PURE__*/React.createElement("div", {
+    className: "slb"
+  }, "Roster")), /*#__PURE__*/React.createElement("div", {
+    className: "sbox"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "snum gold"
+  }, slots.length), /*#__PURE__*/React.createElement("div", {
+    className: "slb"
+  }, "Slots")), /*#__PURE__*/React.createElement("div", {
+    className: "sbox"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "snum g"
+  }, Math.round(conf / Math.max(slots.length * names.length, 1) * 100), "%"), /*#__PURE__*/React.createElement("div", {
+    className: "slb"
+  }, "Confirmed")), /*#__PURE__*/React.createElement("div", {
+    className: "sbox"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "snum bl"
+  }, tbd), /*#__PURE__*/React.createElement("div", {
+    className: "slb"
+  }, "TBD"))), /*#__PURE__*/React.createElement("div", {
+    className: "mx-clbar"
+  }, evIds.map(id => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    className: "btn bg",
+    style: {
+      fontSize: 10,
+      padding: "5px 11px"
+    },
+    onClick: () => clrEv(id)
+  }, "Clear \"" + data.events.find(e => e.id === id)?.name + "\"")), /*#__PURE__*/React.createElement("button", {
+    className: "btn bd",
+    style: {
+      fontSize: 10,
+      padding: "5px 11px"
+    },
+    onClick: clrAll
+  }, "Clear All")), /*#__PURE__*/React.createElement("div", {
+    className: "mx-wrap"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "mx-tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    style: {
+      minWidth: 120
+    }
+  }, "Name"), slots.map(s => {
+    const multi = data.events.find(e => e.id === s.eventId)?.days.length > 1;
+    return /*#__PURE__*/React.createElement("th", {
+      key: s.id,
+      style: {
+        maxWidth: 110,
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      },
+      title: `${s.eventName} · ${fmtDate(s.date)}`
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        maxWidth: 100,
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, s.eventName, multi && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--a)",
+        fontSize: 9
+      }
+    }, "Day ", s.dayLabel))));
+  })), /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: "var(--bg)"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontSize: 10,
+      color: "var(--t3)",
+      padding: "3px 13px"
+    }
+  }, "Totals \u2192"), slots.map(s => {
+    const c = counts[s.id];
+    return /*#__PURE__*/React.createElement("td", {
+      key: s.id,
+      style: {
+        padding: "3px 13px"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--g)",
+        fontSize: 11
+      }
+    }, c.y, "\u2713 "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--am)",
+        fontSize: 11
+      }
+    }, c.p, "\u25D1 "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--bl)",
+        fontSize: 11
+      }
+    }, c.t, "? "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--r)",
+        fontSize: 11
+      }
+    }, c.n, "\u2717"));
+  }))), /*#__PURE__*/React.createElement("tbody", null, names.map(nm => /*#__PURE__*/React.createElement("tr", {
+    key: nm
+  }, /*#__PURE__*/React.createElement("td", null, nm, !en.includes(nm) && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--t3)",
+      fontSize: 10,
+      marginLeft: 5
+    }
+  }, "(unlisted)")), slots.map(s => {
+    const r = responses[`${s.id}::${nm.toLowerCase()}`];
+    return /*#__PURE__*/React.createElement("td", {
+      key: s.id
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "ctip"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `chip${r ? " " + r.status : " empty"}`
+    }, r ? IC[r.status] : "–"), r?.note && /*#__PURE__*/React.createElement("span", {
+      className: "tt"
+    }, r.note), r?.status === "tbd" && !r.note && /*#__PURE__*/React.createElement("span", {
+      className: "tt"
+    }, "TBD \u2014 awaiting update")));
+  })))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      fontSize: 11,
+      color: "var(--t3)",
+      display: "flex",
+      gap: 18,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--g)"
+    }
+  }, "\u2713"), " Available"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--am)"
+    }
+  }, "\u25D1"), " Partial"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--bl)"
+    }
+  }, "?"), " TBD"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--r)"
+    }
+  }, "\u2717"), " Unavailable"), /*#__PURE__*/React.createElement("span", null, "\u2013 No response")));
+}
+
+// ── Outstanding ───────────────────────────────────────────────────────────────
+function Outstanding({
+  data,
+  slots
+}) {
+  const {
+    responses,
+    expectedNames: en = []
+  } = data;
+  const respNames = new Set(Object.values(responses).map(r => r.name));
+  const names = [...new Set([...en, ...respNames])].sort();
+  if (!slots.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No active events.");
+  if (!names.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No roster yet.");
+  return /*#__PURE__*/React.createElement("div", null, data.events.map(ev => {
+    const evSlots = ev.days.map(d => ({
+      ...d,
+      eventId: ev.id
+    }));
+    const none = names.filter(nm => evSlots.every(s => !responses[`${s.id}::${nm.toLowerCase()}`]));
+    const tbdP = names.filter(nm => evSlots.some(s => responses[`${s.id}::${nm.toLowerCase()}`]?.status === "tbd") && !none.includes(nm));
+    if (!none.length && !tbdP.length) return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        display: "flex",
+        gap: 7,
+        alignItems: "center",
+        marginBottom: 7,
+        fontSize: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--g)"
+      }
+    }, "\u2713"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t)"
+      }
+    }, ev.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t3)"
+      }
+    }, "\u2014 all in"));
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      className: "out-block"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontFamily: "'Playfair Display',serif",
+        fontWeight: 700,
+        marginBottom: 7,
+        color: "var(--t)"
+      }
+    }, ev.name), none.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        letterSpacing: ".1em",
+        textTransform: "uppercase",
+        color: "var(--t3)"
+      }
+    }, "No response: "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: "var(--t)"
+      }
+    }, none.join(", "))), tbdP.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        letterSpacing: ".1em",
+        textTransform: "uppercase",
+        color: "var(--bl)"
+      }
+    }, "TBD: "), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: "var(--t)"
+      }
+    }, tbdP.join(", "))));
+  }));
+}
+
+// ── Results ───────────────────────────────────────────────────────────────────
+function Results({
+  data,
+  slots
+}) {
+  const [q, setQ] = useState("");
+  const {
+    responses,
+    expectedNames: en = []
+  } = data;
+  const IC = {
+    yes: "✓",
+    no: "✗",
+    partial: "◑",
+    tbd: "?"
+  };
+  const SC = {
+    yes: "var(--g)",
+    no: "var(--r)",
+    partial: "var(--am)",
+    tbd: "var(--bl)"
+  };
+  const SL = {
+    yes: "Yes",
+    no: "No",
+    partial: "Partial",
+    tbd: "TBD"
+  };
+  const filtered = data.events.filter(ev => {
+    const ql = q.toLowerCase().trim();
+    if (!ql) return true;
+    if (ev.name.toLowerCase().includes(ql)) return true;
+    if (ev.location.toLowerCase().includes(ql)) return true;
+    if (ev.days.some(d => fmtDate(d.date).toLowerCase().includes(ql) || d.date.includes(ql))) return true;
+    return false;
+  });
+  if (!data.events.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No active events.");
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Search by event name, location, or date\u2026",
+    value: q,
+    onChange: e => setQ(e.target.value)
+  })), !filtered.length && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: "var(--t3)"
+    }
+  }, "No events match \"", q, "\"."), filtered.map(ev => {
+    const evSlots = slots.filter(s => s.eventId === ev.id);
+    const respNames = new Set(Object.values(responses).filter(r => evSlots.some(s => s.id === r.slotId)).map(r => r.name));
+    const allNames = [...new Set([...en, ...respNames])].sort();
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        marginBottom: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Playfair Display',serif",
+        fontSize: 17,
+        fontWeight: 700,
+        marginBottom: 3,
+        color: "var(--t)"
+      }
+    }, ev.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "var(--t)",
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "tag"
+    }, ev.location), "\xA0", ev.days.map((d, i) => /*#__PURE__*/React.createElement("span", {
+      key: i
+    }, ev.days.length > 1 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--a)"
+      }
+    }, "Day ", d.dayLabel, ": "), fmtDate(d.date), " \xB7 ", slotTime(d), i < ev.days.length - 1 ? " · " : ""))), evSlots.length > 1 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowX: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: 12,
+        whiteSpace: "nowrap"
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+      style: {
+        background: "var(--s2)",
+        padding: "7px 12px",
+        textAlign: "left",
+        fontSize: 10,
+        letterSpacing: ".1em",
+        textTransform: "uppercase",
+        color: "var(--t)",
+        borderBottom: "1px solid var(--b)",
+        minWidth: 120
+      }
+    }, "Name"), evSlots.map(s => /*#__PURE__*/React.createElement("th", {
+      key: s.id,
+      style: {
+        background: "var(--s2)",
+        padding: "7px 12px",
+        fontSize: 10,
+        letterSpacing: ".1em",
+        textTransform: "uppercase",
+        color: "var(--t)",
+        borderBottom: "1px solid var(--b)"
+      }
+    }, "Day ", s.dayLabel, /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t3)",
+        fontSize: 9,
+        textTransform: "none",
+        letterSpacing: 0
+      }
+    }, fmtDate(s.date)))))), /*#__PURE__*/React.createElement("tbody", null, allNames.map(nm => /*#__PURE__*/React.createElement("tr", {
+      key: nm
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "7px 12px",
+        borderBottom: "1px solid var(--b)",
+        fontWeight: 600,
+        color: "var(--t)"
+      }
+    }, nm), evSlots.map(s => {
+      const r = responses[`${s.id}::${nm.toLowerCase()}`];
+      return /*#__PURE__*/React.createElement("td", {
+        key: s.id,
+        style: {
+          padding: "7px 12px",
+          borderBottom: "1px solid var(--b)",
+          color: "var(--t)"
+        }
+      }, r ? /*#__PURE__*/React.createElement("div", {
+        className: "ctip"
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: SC[r.status],
+          fontWeight: 700
+        }
+      }, IC[r.status], " ", SL[r.status]), r.note && /*#__PURE__*/React.createElement("span", {
+        className: "tt"
+      }, r.note)) : /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: "var(--t3)"
+        }
+      }, "\u2013"));
+    })))))) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 5
+      }
+    }, allNames.map(nm => {
+      const r = responses[`${evSlots[0].id}::${nm.toLowerCase()}`];
+      return /*#__PURE__*/React.createElement("div", {
+        key: nm,
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          background: "var(--s2)",
+          border: "1px solid var(--b)",
+          borderRadius: 7,
+          padding: "9px 13px",
+          fontSize: 13
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 600,
+          color: "var(--t)"
+        }
+      }, nm), /*#__PURE__*/React.createElement("div", {
+        style: {
+          textAlign: "right"
+        }
+      }, r ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: SC[r.status],
+          fontWeight: 700,
+          fontSize: 12
+        }
+      }, IC[r.status], " ", SL[r.status]), r.note && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: "var(--t2)",
+          marginTop: 2
+        }
+      }, r.note)) : /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: "var(--t3)",
+          fontSize: 12
+        }
+      }, "\u2013")));
+    })), /*#__PURE__*/React.createElement("hr", {
+      className: "div",
+      style: {
+        marginTop: 16
+      }
+    }));
+  }));
+}
+
+// ── Roster ────────────────────────────────────────────────────────────────────
+function Roster({
+  data,
+  persist
+}) {
+  const [nw, setNw] = useState("");
+  const [msg, setMsg] = useState("");
+  const ns = data.expectedNames || [];
+  const flash = m => {
+    setMsg(m);
+    setTimeout(() => setMsg(""), 3000);
+  };
+  const add = async () => {
+    const t = nw.trim();
+    if (!t) return;
+    if (ns.some(n => n.toLowerCase() === t.toLowerCase())) {
+      flash("Already in roster.");
+      return;
+    }
+    await persist({
+      ...data,
+      expectedNames: [...ns, t]
+    });
+    setNw("");
+    flash(`Added "${t}".`);
+  };
+  const rm = async n => {
+    if (!confirm(`Remove "${n}"?`)) return;
+    await persist({
+      ...data,
+      expectedNames: ns.filter(x => x !== n)
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Expected Respondents"), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontFamily: "'Playfair Display',serif",
+      fontSize: 19,
+      marginBottom: 7,
+      color: "var(--t)"
+    }
+  }, "Roster"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)",
+      marginBottom: 18,
+      lineHeight: 1.7
+    }
+  }, "Only people on this list can fill out the form."), msg && /*#__PURE__*/React.createElement("div", {
+    className: "alert ok"
+  }, msg), !ns.length ? /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: "var(--t3)",
+      marginBottom: 14
+    }
+  }, "No names yet.") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 7,
+      marginTop: 10,
+      marginBottom: 16
+    }
+  }, ns.map(n => /*#__PURE__*/React.createElement("div", {
+    key: n,
+    className: "rtag"
+  }, n, /*#__PURE__*/React.createElement("button", {
+    className: "rrem",
+    onClick: () => rm(n)
+  }, "\xD7")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 9,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Add a name\u2026",
+    value: nw,
+    onChange: e => setNw(e.target.value),
+    onKeyDown: e => e.key === "Enter" && add(),
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    style: {
+      padding: "11px 18px",
+      whiteSpace: "nowrap"
+    },
+    onClick: add,
+    disabled: !nw.trim()
+  }, "+ Add")));
+}
+
+// ── Events list ───────────────────────────────────────────────────────────────
+function Events({
+  data,
+  persist
+}) {
+  const [msg, setMsg] = useState("");
+  const [editing, setEditing] = useState(null); // event id being edited
+  const del = async id => {
+    if (!confirm("Delete event and all responses?")) return;
+    const nr = {};
+    for (const [k, v] of Object.entries(data.responses)) if (v.eventId !== id) nr[k] = v;
+    await persist({
+      ...data,
+      events: data.events.filter(e => e.id !== id),
+      responses: nr
+    });
+    setMsg("Deleted.");
+    setTimeout(() => setMsg(""), 3000);
+  };
+  const sorted = [...data.events].sort((a, b) => {
+    const ad = a.days[0]?.date || "";
+    const bd = b.days[0]?.date || "";
+    return ad < bd ? -1 : ad > bd ? 1 : 0;
+  });
+  if (!data.events.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No events yet.");
+  if (editing) {
+    const ev = data.events.find(e => e.id === editing);
+    return /*#__PURE__*/React.createElement(EditEvent, {
+      key: editing,
+      ev: ev,
+      data: data,
+      persist: persist,
+      onDone: () => setEditing(null)
+    });
+  }
+  return /*#__PURE__*/React.createElement("div", null, msg && /*#__PURE__*/React.createElement("div", {
+    className: "alert ok"
+  }, msg), sorted.map(ev => /*#__PURE__*/React.createElement("div", {
+    key: ev.id,
+    className: "evitem"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "evname"
+  }, ev.name), /*#__PURE__*/React.createElement("div", {
+    className: "evmeta"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "tag"
+  }, ev.location), /*#__PURE__*/React.createElement("br", null), ev.days.map((d, i) => /*#__PURE__*/React.createElement("span", {
+    key: i
+  }, ev.days.length > 1 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--a)"
+    }
+  }, "Day ", d.dayLabel, ": "), fmtDate(d.date), " \xB7 ", slotTime(d), i < ev.days.length - 1 && /*#__PURE__*/React.createElement("br", null))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 13px",
+      fontSize: 11
+    },
+    onClick: () => setEditing(ev.id)
+  }, "Edit"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bd",
+    style: {
+      padding: "7px 13px",
+      fontSize: 11
+    },
+    onClick: () => del(ev.id)
+  }, "Delete")))));
+}
+function EditEvent({
+  ev,
+  data,
+  persist,
+  onDone
+}) {
+  const [name, setName] = useState(ev.name);
+  const [loc, setLoc] = useState(ev.location);
+  const [days, setDays] = useState(ev.days.map(d => ({
+    ...d
+  })));
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState("");
+  const addD = () => setDays([...days, {
+    id: gid(),
+    dayLabel: String(days.length + 1),
+    date: "",
+    allDay: false,
+    eventTime: "",
+    leaveTime: ""
+  }]);
+  const rmD = i => setDays(days.filter((_, j) => j !== i).map((d, j) => ({
+    ...d,
+    dayLabel: String(j + 1)
+  })));
+  const upD = (i, f, v) => setDays(days.map((d, j) => j === i ? {
+    ...d,
+    [f]: v
+  } : d));
+  const go = async () => {
+    if (!name.trim()) {
+      setErr("Event name required.");
+      return;
+    }
+    if (!loc.trim()) {
+      setErr("Location required.");
+      return;
+    }
+    if (days.some(d => !d.date || !d.allDay && (!d.eventTime || !d.leaveTime))) {
+      setErr("Fill in all date/time fields.");
+      return;
+    }
+    setErr("");
+    const updated = {
+      ...ev,
+      name: name.trim(),
+      location: loc.trim(),
+      days: days.map(d => ({
+        ...d
+      }))
+    };
+    await persist({
+      ...data,
+      events: data.events.map(e => e.id === ev.id ? updated : e)
+    });
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      onDone();
+    }, 900);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "Editing Event"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 22,
+      marginBottom: 0
+    }
+  }, ev.name)), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 14px",
+      fontSize: 11
+    },
+    onClick: onDone
+  }, "Cancel")), err && /*#__PURE__*/React.createElement("div", {
+    className: "alert er"
+  }, err), saved && /*#__PURE__*/React.createElement("div", {
+    className: "alert ok"
+  }, "Saved!"), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Event Name"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: name,
+    onChange: e => setName(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Location"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: loc,
+    onChange: e => setLoc(e.target.value)
+  })), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)"
+    }
+  }, days.length === 1 ? "Single-day" : "Multi-day (" + days.length + " days)"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 14px",
+      fontSize: 11
+    },
+    onClick: addD
+  }, "+ Add Day")), days.map((d, i) => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    className: "dslot"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      color: "var(--a)"
+    }
+  }, days.length > 1 ? `Day ${d.dayLabel}` : "Event Day"), days.length > 1 && /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "3px 9px",
+      fontSize: 10
+    },
+    onClick: () => rmD(i)
+  }, "Remove")), /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: d.date,
+    onChange: e => upD(i, "date", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "trow",
+    onClick: () => upD(i, "allDay", !d.allDay)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `tbox${d.allDay ? " on" : ""}`
+  }, d.allDay ? "✓" : ""), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)"
+    }
+  }, "All Day")), !d.allDay && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Start"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: d.eventTime,
+    onChange: e => upD(i, "eventTime", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "End"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: d.leaveTime,
+    onChange: e => upD(i, "leaveTime", e.target.value)
+  }))))), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: go,
+    disabled: saved
+  }, "Save Changes \u2192"));
+}
+
+// ── Create event ──────────────────────────────────────────────────────────────
+function Create({
+  data,
+  persist,
+  onDone
+}) {
+  const [name, setName] = useState("");
+  const [loc, setLoc] = useState("");
+  const [days, setDays] = useState([{
+    id: gid(),
+    dayLabel: "1",
+    date: "",
+    allDay: false,
+    eventTime: "",
+    leaveTime: ""
+  }]);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState("");
+  const addD = () => setDays([...days, {
+    id: gid(),
+    dayLabel: String(days.length + 1),
+    date: "",
+    allDay: false,
+    eventTime: "",
+    leaveTime: ""
+  }]);
+  const rmD = i => setDays(days.filter((_, j) => j !== i).map((d, j) => ({
+    ...d,
+    dayLabel: String(j + 1)
+  })));
+  const upD = (i, f, v) => setDays(days.map((d, j) => j === i ? {
+    ...d,
+    [f]: v
+  } : d));
+  const go = async () => {
+    if (!name.trim()) {
+      setErr("Event name required.");
+      return;
+    }
+    if (!loc.trim()) {
+      setErr("Location required.");
+      return;
+    }
+    if (days.some(d => !d.date || !d.allDay && (!d.eventTime || !d.leaveTime))) {
+      setErr("Fill in all date/time fields.");
+      return;
+    }
+    setErr("");
+    await persist({
+      ...data,
+      events: [...data.events, {
+        id: gid(),
+        name: name.trim(),
+        location: loc.trim(),
+        days: days.map(d => ({
+          ...d
+        }))
+      }]
+    });
+    setSaved(true);
+    setTimeout(() => {
+      setSaved(false);
+      onDone();
+    }, 1200);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "slabel"
+  }, "New Event"), /*#__PURE__*/React.createElement("h2", {
+    className: "hl",
+    style: {
+      fontSize: 22,
+      marginBottom: 20
+    }
+  }, "Create an event"), err && /*#__PURE__*/React.createElement("div", {
+    className: "alert er"
+  }, err), saved && /*#__PURE__*/React.createElement("div", {
+    className: "alert ok"
+  }, "Created! Redirecting\u2026"), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Event Name"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "e.g. Sunday Service Volunteer",
+    value: name,
+    onChange: e => setName(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Location"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "e.g. Main Hall",
+    value: loc,
+    onChange: e => setLoc(e.target.value)
+  })), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)"
+    }
+  }, days.length === 1 ? "Single-day" : "Multi-day (" + days.length + " days)"), /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "7px 14px",
+      fontSize: 11
+    },
+    onClick: addD
+  }, "+ Add Day")), days.map((d, i) => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    className: "dslot"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      letterSpacing: ".1em",
+      textTransform: "uppercase",
+      color: "var(--a)"
+    }
+  }, days.length > 1 ? `Day ${d.dayLabel}` : "Event Day"), days.length > 1 && /*#__PURE__*/React.createElement("button", {
+    className: "btn bg",
+    style: {
+      padding: "3px 9px",
+      fontSize: 10
+    },
+    onClick: () => rmD(i)
+  }, "Remove")), /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: d.date,
+    onChange: e => upD(i, "date", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "trow",
+    onClick: () => upD(i, "allDay", !d.allDay)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `tbox${d.allDay ? " on" : ""}`
+  }, d.allDay ? "✓" : ""), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)"
+    }
+  }, "All Day")), !d.allDay && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Start"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: d.eventTime,
+    onChange: e => upD(i, "eventTime", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "End"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: d.leaveTime,
+    onChange: e => upD(i, "leaveTime", e.target.value)
+  }))))), /*#__PURE__*/React.createElement("hr", {
+    className: "div"
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn bp",
+    onClick: go,
+    disabled: saved
+  }, "Create Event \u2192"));
+}
+
+// ── Archive ───────────────────────────────────────────────────────────────────
+function Archive({
+  data,
+  persist
+}) {
+  const [q, setQ] = useState("");
+  const arch = data.archivedEvents || [];
+  if (!arch.length) return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      color: "var(--t2)",
+      fontSize: 13
+    }
+  }, "No archived events yet. Past events move here automatically and are kept for one year.");
+  const ql = q.toLowerCase().trim();
+  const filtered = arch.filter(ev => {
+    if (!ql) return true;
+    if (ev.name.toLowerCase().includes(ql)) return true;
+    const ids = new Set(ev.days.map(d => d.id));
+    return Object.values(data.responses).some(r => ids.has(r.slotId) && r.name.toLowerCase().includes(ql));
+  });
+  const del = async id => {
+    if (!confirm("Permanently delete archived event and responses?")) return;
+    const nr = {};
+    for (const [k, v] of Object.entries(data.responses)) if (v.eventId !== id) nr[k] = v;
+    await persist({
+      ...data,
+      archivedEvents: arch.filter(e => e.id !== id),
+      responses: nr
+    });
+  };
+  const IC = {
+    yes: "✓",
+    no: "✗",
+    partial: "◑",
+    tbd: "?"
+  };
+  const SC = {
+    yes: "var(--g)",
+    no: "var(--r)",
+    partial: "var(--am)",
+    tbd: "var(--bl)"
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: "var(--t2)",
+      marginBottom: 12,
+      lineHeight: 1.7
+    }
+  }, "Past events live here. Auto-deleted 1 year after event date."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 9,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Search by event or person\u2026",
+    value: q,
+    onChange: e => setQ(e.target.value),
+    style: {
+      flex: 1
+    }
+  })), !filtered.length && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: "var(--t3)"
+    }
+  }, "No results for \"", q, "\"."), filtered.map(ev => {
+    const ids = ev.days.map(d => d.id);
+    const evR = Object.values(data.responses).filter(r => ids.includes(r.slotId));
+    const respondents = [...new Set(evR.map(r => r.name))].sort();
+    const exp = new Date(lastDate(ev));
+    exp.setFullYear(exp.getFullYear() + 1);
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        marginBottom: 22
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 10,
+        marginBottom: 7
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Playfair Display',serif",
+        fontSize: 15,
+        fontWeight: 700,
+        color: "var(--t)"
+      }
+    }, ev.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "var(--t2)",
+        marginTop: 3,
+        lineHeight: 1.8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "tag"
+    }, ev.location), /*#__PURE__*/React.createElement("br", null), ev.days.map((d, i) => /*#__PURE__*/React.createElement("span", {
+      key: i
+    }, ev.days.length > 1 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--a)"
+      }
+    }, "Day ", d.dayLabel, ": "), fmtDate(d.date), " \xB7 ", slotTime(d), i < ev.days.length - 1 && /*#__PURE__*/React.createElement("br", null))), /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "var(--t3)"
+      }
+    }, "Expires ", exp.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    })))), /*#__PURE__*/React.createElement("button", {
+      className: "btn bd",
+      style: {
+        fontSize: 10,
+        padding: "5px 11px",
+        flexShrink: 0
+      },
+      onClick: () => del(ev.id)
+    }, "Delete")), respondents.length ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowX: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      className: "arch-tbl"
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Name"), ev.days.map(d => /*#__PURE__*/React.createElement("th", {
+      key: d.id
+    }, ev.days.length > 1 ? `Day ${d.dayLabel}` : fmtDate(d.date))))), /*#__PURE__*/React.createElement("tbody", null, respondents.map(nm => /*#__PURE__*/React.createElement("tr", {
+      key: nm
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: "var(--t)",
+        fontWeight: 500
+      }
+    }, nm), ev.days.map(d => {
+      const r = data.responses[`${d.id}::${nm.toLowerCase()}`];
+      return /*#__PURE__*/React.createElement("td", {
+        key: d.id
+      }, r ? /*#__PURE__*/React.createElement("span", {
+        title: r.note || undefined,
+        style: {
+          color: SC[r.status],
+          fontWeight: 600,
+          cursor: r.note ? "help" : "default"
+        }
+      }, IC[r.status], r.note ? " *" : "") : /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: "var(--t3)"
+        }
+      }, "\u2013"));
+    })))))) : /*#__PURE__*/React.createElement("p", {
+      style: {
+        fontSize: 12,
+        color: "var(--t3)"
+      }
+    }, "No responses."), /*#__PURE__*/React.createElement("hr", {
+      className: "div",
+      style: {
+        marginTop: 14
+      }
+    }));
+  }));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 </script>
 </body>
 </html>
