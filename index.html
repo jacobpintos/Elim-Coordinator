@@ -73,13 +73,14 @@ textarea{resize:vertical;min-height:70px}
 .prog-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:7px}
 .prog-bar{height:3px;background:var(--b);border-radius:2px}
 .prog-fill{height:100%;background:var(--a);border-radius:2px;transition:width .4s ease}
-.mx-wrap{overflow-x:auto;margin-top:20px}
+.mx-wrap{overflow-x:auto;margin-top:20px;max-height:70vh;overflow-y:auto}
 .mx-tbl{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
 .mx-tbl th{background:var(--s2);padding:9px 13px;text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--t);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:2}
-.mx-tbl thead tr:nth-child(2) td{position:sticky;top:38px;z-index:2;background:var(--bg)}
-.mx-tbl th:first-child{position:sticky;left:0;z-index:3;background:var(--s2);border-right:2px solid var(--b)}
+.mx-tbl thead tr:nth-child(2) td{position:sticky;top:37px;z-index:2;background:#0c0c0e;border-bottom:1px solid var(--b)}
+.mx-tbl th:first-child{position:sticky;left:0;top:0;z-index:4;background:var(--s2);border-right:2px solid var(--b)}
 .mx-tbl td{padding:9px 13px;border-bottom:1px solid var(--b);vertical-align:middle;color:var(--t)}
 .mx-tbl td:first-child{position:sticky;left:0;z-index:1;background:var(--s);font-weight:600;border-right:2px solid var(--b)}
+.mx-tbl thead tr:nth-child(2) td:first-child{position:sticky;left:0;top:37px;z-index:3;background:#0c0c0e;border-right:2px solid var(--b)}
 .mx-tbl tr:last-child td{border-bottom:none}
 .mx-tbl tr:hover td{background:var(--s2)}
 .mx-tbl tr:hover td:first-child{background:var(--s2)}
@@ -130,7 +131,17 @@ textarea{resize:vertical;min-height:70px}
 .arch-tbl td{padding:8px 11px;border-bottom:1px solid var(--b);color:var(--t)}
 .arch-tbl tr:last-child td{border-bottom:none}
 .out-block{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:11px 15px;margin-bottom:9px}
-</style>
+.tour-overlay{position:fixed;inset:0;z-index:2000;pointer-events:none}
+.tour-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);pointer-events:all}
+.tour-box{position:fixed;z-index:2010;background:var(--s);border:1px solid var(--a);border-radius:12px;padding:22px 24px;max-width:320px;pointer-events:all;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.tour-step-label{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--a);margin-bottom:6px}
+.tour-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--t);margin-bottom:8px}
+.tour-body{font-size:12px;color:var(--t2);line-height:1.7;margin-bottom:16px}
+.tour-nav{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tour-dots{display:flex;gap:5px}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--b)}
+.tour-dot.on{background:var(--a)}
+.tour-highlight{position:fixed;z-index:1999;border-radius:8px;box-shadow:0 0 0 4px var(--a),0 0 0 9999px rgba(0,0,0,.7);pointer-events:none;transition:all .3s ease}
 </head>
 <body>
 <div id="root"></div>
@@ -455,15 +466,58 @@ function AdminLogin({setView}){
   return <div className="card" style={{maxWidth:400}}><div className="slabel">Admin Access</div><h2 className="hl" style={{fontSize:24}}>Sign in</h2><p className="sub">Enter the admin password.</p>{err&&<div className="alert er">Incorrect password.</div>}<div className="field"><label>Password</label><input type="password" placeholder="••••••••" value={pw} onChange={e=>{setPw(e.target.value);setErr(false);}} onKeyDown={e=>e.key==="Enter"&&go()}/></div><button className="btn bp" onClick={go} disabled={!pw||loading}>{loading?"Checking…":"Enter Portal →"}</button></div>;
 }
 
+// ── Tour ──────────────────────────────────────────────────────────────────────
+const TOUR_STEPS=[
+  {tab:null,title:"Welcome to the Dashboard",body:"This is the admin portal for Elim Coordinator. Let's walk through each section so you know where everything is.",anchor:null},
+  {tab:"matrix",title:"Availability Matrix",body:"See everyone's availability at a glance. Names are frozen on the left as you scroll right. Hover any chip to see notes. Use the Clear buttons to reset responses for an event.",anchor:"[data-tour='matrix']"},
+  {tab:"outstanding",title:"Outstanding Responses",body:"Quickly see who hasn't responded yet and who still has a TBD answer, broken down per event.",anchor:"[data-tour='outstanding']"},
+  {tab:"results",title:"Results",body:"Browse responses event by event. Search by event name, location, or date. Single-day events show a flat list; multi-day events show a table.",anchor:"[data-tour='results']"},
+  {tab:"roster",title:"Roster",body:"Manage who can fill out the form. Only people on this list will appear in the name dropdown on the public form.",anchor:"[data-tour='roster']"},
+  {tab:"events",title:"Manage Events",body:"View, edit, or delete events. Events are sorted by date. Past events automatically move to the Archive.",anchor:"[data-tour='events']"},
+  {tab:"create",title:"Create Event",body:"Add a new event with a name, location, and one or more days. Each day can have specific times or be marked All Day. Multi-day events are asked separately in the survey.",anchor:"[data-tour='create']"},
+  {tab:"archive",title:"Archive",body:"Past events live here for one year, then are automatically deleted. Search by event name or person name.",anchor:"[data-tour='archive']"},
+  {tab:"settings",title:"Settings",body:"Change the admin password here. The password is stored securely in Firestore — not in the source code.",anchor:"[data-tour='settings']"},
+];
+
+function Tour({onClose,setTab}){
+  const[step,setStep]=useState(0);
+  const s=TOUR_STEPS[step];
+  useEffect(()=>{if(s.tab)setTab(s.tab);},[step]);
+  const next=()=>{if(step<TOUR_STEPS.length-1)setStep(step+1);else onClose();};
+  const prev=()=>{if(step>0)setStep(step-1);};
+  return(
+    <div className="tour-overlay">
+      <div className="tour-backdrop" onClick={onClose}/>
+      <div className="tour-box" style={{top:"50%",left:"50%",transform:"translate(-50%,-50%)"}}>
+        <div className="tour-step-label">Step {step+1} of {TOUR_STEPS.length}</div>
+        <div className="tour-title">{s.title}</div>
+        <div className="tour-body">{s.body}</div>
+        <div className="tour-nav">
+          <div className="tour-dots">{TOUR_STEPS.map((_,i)=><div key={i} className={`tour-dot${i===step?" on":""}`}/>)}</div>
+          <div style={{display:"flex",gap:8}}>
+            {step>0&&<button className="btn bg" style={{padding:"7px 14px",fontSize:11}} onClick={prev}>← Back</button>}
+            <button className="btn bg" style={{padding:"7px 14px",fontSize:11,color:"var(--r)",borderColor:"var(--r)"}} onClick={onClose}>End Tour</button>
+            <button className="btn bp" style={{padding:"7px 18px",fontSize:11}} onClick={next}>{step<TOUR_STEPS.length-1?"Next →":"Done ✓"}</button>
+          </div>
+        </div>
+        <button onClick={onClose} style={{position:"absolute",top:12,right:14,background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:16}}>×</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Admin portal ──────────────────────────────────────────────────────────────
 function Admin({data,persist,slots,tab,setTab}){
+  const[touring,setTouring]=useState(false);
   const TABS=[["matrix","Matrix"],["outstanding","Outstanding"],["results","Results"],["roster","Roster"],["events","Events"],["create","Create"],["archive","Archive"],["settings","Settings"]];
   return(
     <div>
+      {touring&&<Tour onClose={()=>setTouring(false)} setTab={setTab}/>}
       <div style={{marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
         <div><div className="slabel">Admin Portal</div><h2 className="hl" style={{fontSize:24}}>Dashboard</h2></div>
+        <button className="btn bg" style={{fontSize:11,padding:"7px 14px"}} onClick={()=>setTouring(true)}>⟳ Take a Tour</button>
       </div>
-      <div className="tabs">{TABS.map(([id,lbl])=><button key={id} className={`tab${tab===id?" on":""}`} onClick={()=>setTab(id)}>{lbl}</button>)}</div>
+      <div className="tabs">{TABS.map(([id,lbl])=><button key={id} data-tour={id} className={`tab${tab===id?" on":""}`} onClick={()=>setTab(id)}>{lbl}</button>)}</div>
       {tab==="matrix"&&<Matrix data={data} slots={slots} persist={persist}/>}
       {tab==="outstanding"&&<Outstanding data={data} slots={slots}/>}
       {tab==="results"&&<Results data={data} slots={slots}/>}
@@ -598,11 +652,18 @@ function Results({data,slots}){
   const IC={yes:"✓",no:"✗",partial:"◑",tbd:"?"};
   const SC={yes:"var(--g)",no:"var(--r)",partial:"var(--am)",tbd:"var(--bl)"};
   const SL={yes:"Yes",no:"No",partial:"Partial",tbd:"TBD"};
-  const filtered=data.events.filter(ev=>ev.name.toLowerCase().includes(q.toLowerCase().trim()));
+  const filtered=data.events.filter(ev=>{
+    const ql=q.toLowerCase().trim();
+    if(!ql)return true;
+    if(ev.name.toLowerCase().includes(ql))return true;
+    if(ev.location.toLowerCase().includes(ql))return true;
+    if(ev.days.some(d=>fmtDate(d.date).toLowerCase().includes(ql)||d.date.includes(ql)))return true;
+    return false;
+  });
   if(!data.events.length)return <div className="card" style={{color:"var(--t2)",fontSize:13}}>No active events.</div>;
   return(
     <div>
-      <div style={{marginBottom:18}}><input type="text" placeholder="Search by event name…" value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <div style={{marginBottom:18}}><input type="text" placeholder="Search by event name, location, or date…" value={q} onChange={e=>setQ(e.target.value)}/></div>
       {!filtered.length&&<p style={{fontSize:13,color:"var(--t3)"}}>No events match "{q}".</p>}
       {filtered.map(ev=>{
         const evSlots=slots.filter(s=>s.eventId===ev.id);
@@ -668,9 +729,55 @@ function Roster({data,persist}){
 // ── Events list ───────────────────────────────────────────────────────────────
 function Events({data,persist}){
   const[msg,setMsg]=useState("");
+  const[editing,setEditing]=useState(null); // event id being edited
   const del=async id=>{if(!confirm("Delete event and all responses?"))return;const nr={};for(const[k,v]of Object.entries(data.responses))if(v.eventId!==id)nr[k]=v;await persist({...data,events:data.events.filter(e=>e.id!==id),responses:nr});setMsg("Deleted.");setTimeout(()=>setMsg(""),3000);};
+  const sorted=[...data.events].sort((a,b)=>{const ad=a.days[0]?.date||"";const bd=b.days[0]?.date||"";return ad<bd?-1:ad>bd?1:0;});
   if(!data.events.length)return <div className="card" style={{color:"var(--t2)",fontSize:13}}>No events yet.</div>;
-  return <div>{msg&&<div className="alert ok">{msg}</div>}{data.events.map(ev=><div key={ev.id} className="evitem"><div><div className="evname">{ev.name}</div><div className="evmeta"><span className="tag">{ev.location}</span><br/>{ev.days.map((d,i)=><span key={i}>{ev.days.length>1&&<span style={{color:"var(--a)"}}>Day {d.dayLabel}: </span>}{fmtDate(d.date)} · {slotTime(d)}{i<ev.days.length-1&&<br/>}</span>)}</div></div><button className="btn bd" style={{padding:"7px 13px",fontSize:11}} onClick={()=>del(ev.id)}>Delete</button></div>)}</div>;
+  if(editing){
+    const ev=data.events.find(e=>e.id===editing);
+    return <EditEvent key={editing} ev={ev} data={data} persist={persist} onDone={()=>setEditing(null)}/>;
+  }
+  return <div>{msg&&<div className="alert ok">{msg}</div>}{sorted.map(ev=><div key={ev.id} className="evitem"><div style={{flex:1}}><div className="evname">{ev.name}</div><div className="evmeta"><span className="tag">{ev.location}</span><br/>{ev.days.map((d,i)=><span key={i}>{ev.days.length>1&&<span style={{color:"var(--a)"}}>Day {d.dayLabel}: </span>}{fmtDate(d.date)} · {slotTime(d)}{i<ev.days.length-1&&<br/>}</span>)}</div></div><div style={{display:"flex",gap:7,flexShrink:0}}><button className="btn bg" style={{padding:"7px 13px",fontSize:11}} onClick={()=>setEditing(ev.id)}>Edit</button><button className="btn bd" style={{padding:"7px 13px",fontSize:11}} onClick={()=>del(ev.id)}>Delete</button></div></div>)}</div>;
+}
+
+function EditEvent({ev,data,persist,onDone}){
+  const[name,setName]=useState(ev.name);
+  const[loc,setLoc]=useState(ev.location);
+  const[days,setDays]=useState(ev.days.map(d=>({...d})));
+  const[saved,setSaved]=useState(false);const[err,setErr]=useState("");
+  const addD=()=>setDays([...days,{id:gid(),dayLabel:String(days.length+1),date:"",allDay:false,eventTime:"",leaveTime:""}]);
+  const rmD=i=>setDays(days.filter((_,j)=>j!==i).map((d,j)=>({...d,dayLabel:String(j+1)})));
+  const upD=(i,f,v)=>setDays(days.map((d,j)=>j===i?{...d,[f]:v}:d));
+  const go=async()=>{
+    if(!name.trim()){setErr("Event name required.");return;}if(!loc.trim()){setErr("Location required.");return;}
+    if(days.some(d=>!d.date||(!d.allDay&&(!d.eventTime||!d.leaveTime)))){setErr("Fill in all date/time fields.");return;}
+    setErr("");
+    const updated={...ev,name:name.trim(),location:loc.trim(),days:days.map(d=>({...d}))};
+    await persist({...data,events:data.events.map(e=>e.id===ev.id?updated:e)});
+    setSaved(true);setTimeout(()=>{setSaved(false);onDone();},900);
+  };
+  return(
+    <div className="card">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div><div className="slabel">Editing Event</div><h2 className="hl" style={{fontSize:22,marginBottom:0}}>{ev.name}</h2></div>
+        <button className="btn bg" style={{padding:"7px 14px",fontSize:11}} onClick={onDone}>Cancel</button>
+      </div>
+      {err&&<div className="alert er">{err}</div>}{saved&&<div className="alert ok">Saved!</div>}
+      <div className="field"><label>Event Name</label><input type="text" value={name} onChange={e=>setName(e.target.value)}/></div>
+      <div className="field"><label>Location</label><input type="text" value={loc} onChange={e=>setLoc(e.target.value)}/></div>
+      <hr className="div"/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontSize:12,color:"var(--t2)"}}>{days.length===1?"Single-day":"Multi-day ("+days.length+" days)"}</div><button className="btn bg" style={{padding:"7px 14px",fontSize:11}} onClick={addD}>+ Add Day</button></div>
+      {days.map((d,i)=>(
+        <div key={d.id} className="dslot">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontSize:11,letterSpacing:".1em",textTransform:"uppercase",color:"var(--a)"}}>{days.length>1?`Day ${d.dayLabel}`:"Event Day"}</span>{days.length>1&&<button className="btn bg" style={{padding:"3px 9px",fontSize:10}} onClick={()=>rmD(i)}>Remove</button>}</div>
+          <div className="field" style={{marginBottom:7}}><label>Date</label><input type="date" value={d.date} onChange={e=>upD(i,"date",e.target.value)}/></div>
+          <div className="trow" onClick={()=>upD(i,"allDay",!d.allDay)}><div className={`tbox${d.allDay?" on":""}`}>{d.allDay?"✓":""}</div><span style={{fontSize:12,color:"var(--t2)"}}>All Day</span></div>
+          {!d.allDay&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}><div className="field" style={{marginBottom:0}}><label>Start</label><input type="time" value={d.eventTime} onChange={e=>upD(i,"eventTime",e.target.value)}/></div><div className="field" style={{marginBottom:0}}><label>End</label><input type="time" value={d.leaveTime} onChange={e=>upD(i,"leaveTime",e.target.value)}/></div></div>}
+        </div>
+      ))}
+      <hr className="div"/><button className="btn bp" onClick={go} disabled={saved}>Save Changes →</button>
+    </div>
+  );
 }
 
 // ── Create event ──────────────────────────────────────────────────────────────
