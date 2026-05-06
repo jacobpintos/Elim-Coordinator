@@ -155,22 +155,18 @@ textarea{resize:vertical;min-height:70px}
 const COL = "elim-coordinator";
 let db, fsDoc, fsGet, fsSet;
 function waitForFS() {
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     if (window._fsReady) {
-      db = window._db;
-      fsDoc = window._fsDoc;
-      fsGet = window._fsGet;
-      fsSet = window._fsSet;
+      db = window._db; fsDoc = window._fsDoc; fsGet = window._fsGet; fsSet = window._fsSet;
       res();
-    } else document.addEventListener("fs-ready", () => {
-      db = window._db;
-      fsDoc = window._fsDoc;
-      fsGet = window._fsGet;
-      fsSet = window._fsSet;
-      res();
-    }, {
-      once: true
-    });
+    } else {
+      const t = setTimeout(() => rej(new Error("Firebase failed to load — check network or browser extensions")), 4000);
+      document.addEventListener("fs-ready", () => {
+        clearTimeout(t);
+        db = window._db; fsDoc = window._fsDoc; fsGet = window._fsGet; fsSet = window._fsSet;
+        res();
+      }, { once: true });
+    }
   });
 }
 async function fsLoad() {
