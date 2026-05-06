@@ -367,28 +367,21 @@ function App() {
   const [mode, setMode] = useState("pending");
   const [loadErr, setLoadErr] = useState(null);
   const [timedOut, setTimedOut] = useState(false);
+  const dataLoaded = useRef(false);
   useEffect(() => {
-    // Show the app after 3s regardless — never block on Firebase
+    // Hard fallback — show app after 5s no matter what
     const fallback = setTimeout(() => {
-      if (!data) {
-        setData({
-          events: [],
-          expectedNames: [],
-          responses: {},
-          archivedEvents: []
-        });
-        setLoadErr("Could not reach Firestore. Changes won't be saved until the connection is restored.");
+      if (!dataLoaded.current) {
+        dataLoaded.current = true;
+        setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
+        setLoadErr("Could not reach Firestore. Check your connection or browser settings.");
       }
-    }, 3000);
+    }, 5000);
     fsLoad().then(d => {
       clearTimeout(fallback);
+      dataLoaded.current = true;
       if (d._loadError) {
-        setData({
-          events: [],
-          expectedNames: [],
-          responses: {},
-          archivedEvents: []
-        });
+        setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
         setLoadErr(d._loadError);
         return;
       }
@@ -396,12 +389,8 @@ function App() {
       setData(d);
     }).catch(e => {
       clearTimeout(fallback);
-      setData({
-        events: [],
-        expectedNames: [],
-        responses: {},
-        archivedEvents: []
-      });
+      dataLoaded.current = true;
+      setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});
       setLoadErr(e.message);
     });
     return () => clearTimeout(fallback);
