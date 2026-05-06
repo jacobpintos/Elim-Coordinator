@@ -256,14 +256,16 @@ function App(){
   const[timedOut,setTimedOut]=useState(false);
 
   useEffect(()=>{
-    // Timeout after 10s so a Firestore block never shows a permanent black screen
-    const t=setTimeout(()=>setTimedOut(true),10000);
+    // Show the app after 3s regardless — never block on Firebase
+    const fallback=setTimeout(()=>{
+      if(!data){setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});setLoadErr("Could not reach Firestore. Changes won't be saved until the connection is restored.");}
+    },3000);
     fsLoad().then(d=>{
-      clearTimeout(t);
-      if(d._loadError){setLoadErr(d._loadError);return;}
+      clearTimeout(fallback);
+      if(d._loadError){setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});setLoadErr(d._loadError);return;}
       d=purge(archive(d));setData(d);
-    }).catch(e=>{clearTimeout(t);setLoadErr(e.message);});
-    return()=>clearTimeout(t);
+    }).catch(e=>{clearTimeout(fallback);setData({events:[],expectedNames:[],responses:{},archivedEvents:[]});setLoadErr(e.message);});
+    return()=>clearTimeout(fallback);
   },[]);
 
   const persist=async nd=>{
@@ -297,11 +299,17 @@ function App(){
     </div>
   );
 
+  const ConnBanner=()=>loadErr?(<div style={{background:"rgba(232,125,125,.1)",border:"1px solid rgba(232,125,125,.3)",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:11,color:"#e87d7d",lineHeight:1.6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+    <span>⚠ Firestore unreachable — changes won't be saved. Try Chrome/Firefox, or add this site to Edge's tracking prevention exceptions.<br/><span style={{opacity:.7}}>{loadErr}</span></span>
+    <button onClick={()=>window.location.reload()} style={{background:"none",border:"1px solid #e87d7d",borderRadius:6,color:"#e87d7d",fontFamily:"DM Mono,monospace",fontSize:10,padding:"4px 10px",cursor:"pointer",flexShrink:0}}>Retry</button>
+  </div>):null;
+
   const slots=data.events.flatMap(ev=>ev.days.map(d=>({eventId:ev.id,eventName:ev.name,location:ev.location,...d})));
 
   return(
     <div className="app">
       <div className="grain"/>
+      <ConnBanner/>
       <Hdr view={view} setView={setView} setUser={setUser}/>
       {view==="landing"&&<Landing setView={setView}/>}
       {view==="form"&&<UForm setView={setView} setUser={setUser} setMode={setMode} data={data} slots={slots} names={data.expectedNames||[]}/>}
