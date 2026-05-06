@@ -581,7 +581,7 @@ function App() {
     name: user,
     setView: setView,
     data: data,
-    slots: slots
+    slots: surveySlots || slots
   }), view === "alog" && /*#__PURE__*/React.createElement(AdminLogin, {
     setView: setView
   }), view === "admin" && /*#__PURE__*/React.createElement(Admin, {
