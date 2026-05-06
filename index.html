@@ -848,7 +848,12 @@ function USurvey({
     const r = data.responses[`${s.id}::${name.toLowerCase()}`];
     return !r || r.status === "tbd";
   });
-  const slot = target[idx];
+  // Snapshot the target list on first render so saving responses
+  // doesn't cause the list to shrink and skip slots mid-survey
+  const targetRef = useRef(null);
+  if (targetRef.current === null) targetRef.current = target;
+  const frozenTarget = targetRef.current;
+  const slot = frozenTarget[idx];
   const er = slot ? data.responses[`${slot.id}::${name.toLowerCase()}`] : null;
   useEffect(() => {
     if (prev.current === idx) return;
@@ -861,7 +866,7 @@ function USurvey({
       setExtra("");
     }
   }, [idx]);
-  if (!target.length) return /*#__PURE__*/React.createElement("div", {
+  if (!frozenTarget.length) return /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       textAlign: "center"
@@ -912,11 +917,11 @@ function USurvey({
       responses: nr
     });
     setSaving(false);
-    if (idx + 1 >= target.length) {
+    if (idx + 1 >= frozenTarget.length) {
       setView("done");
       return;
     }
-    const nx = target[idx + 1];
+    const nx = frozenTarget[idx + 1];
     const nxr = nr[`${nx.id}::${name.toLowerCase()}`];
     if (mode === "update" && nxr) {
       setSel(nxr.status);
@@ -931,7 +936,7 @@ function USurvey({
     className: "prog-wrap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "prog-meta"
-  }, /*#__PURE__*/React.createElement("span", null, mode === "update" ? `Editing ${idx + 1} of ${target.length}` : isTbd ? "↻ Updating TBD" : `Question ${idx + 1} of ${target.length}`), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, mode === "update" ? `Editing ${idx + 1} of ${frozenTarget.length}` : isTbd ? "↻ Updating TBD" : `Question ${idx + 1} of ${frozenTarget.length}`), /*#__PURE__*/React.createElement("span", {
     style: {
       color: "var(--a)"
     }
@@ -940,7 +945,7 @@ function USurvey({
   }, /*#__PURE__*/React.createElement("div", {
     className: "prog-fill",
     style: {
-      width: `${idx / target.length * 100}%`
+      width: `${idx / frozenTarget.length * 100}%`
     }
   }))), /*#__PURE__*/React.createElement("div", {
     className: "acard"
@@ -1020,7 +1025,7 @@ function USurvey({
     className: "btn bp",
     onClick: save2,
     disabled: saving || !canSave
-  }, saving ? "Saving…" : idx + 1 < target.length ? "Save & Next →" : "Submit →"), idx > 0 && /*#__PURE__*/React.createElement("button", {
+  }, saving ? "Saving…" : idx + 1 < frozenTarget.length ? "Save & Next →" : "Submit →"), idx > 0 && /*#__PURE__*/React.createElement("button", {
     className: "btn bg",
     onClick: () => setIdx(idx - 1)
   }, "\u2190 Back"), /*#__PURE__*/React.createElement("button", {
