@@ -161,15 +161,25 @@ function waitForFS(){
 
 async function fsLoad(){
   await waitForFS();
-  const snap=await fsGet(fsDoc(db,COL,"appdata"));
-  if(!snap.exists())return{events:[],expectedNames:[],responses:{},archivedEvents:[]};
-  const d=snap.data();
-  return{
-    events:d.events||[],
-    expectedNames:d.expectedNames||[],
-    responses:d.responses||{},
-    archivedEvents:d.archivedEvents||[]
-  };
+  try {
+    const snap=await fsGet(fsDoc(db,COL,"appdata"));
+    if(!snap.exists())return{events:[],expectedNames:[],responses:{},archivedEvents:[]};
+    const d=snap.data();
+    // Sanitise — ensure all fields are the right type so bad data never crashes the app
+    return{
+      events:Array.isArray(d.events)?d.events:[],
+      expectedNames:Array.isArray(d.expectedNames)?d.expectedNames:[],
+      responses:(d.responses&&typeof d.responses==="object"&&!Array.isArray(d.responses))?d.responses:{},
+      archivedEvents:Array.isArray(d.archivedEvents)?d.archivedEvents:[],
+    };
+  } catch(e) {
+    console.error("Firestore load error:",e);
+    return{events:[],expectedNames:[],responses:{},archivedEvents:[],_loadError:e.message};
+  }
+}
+async function fsReset(){
+  await waitForFS();
+  await fsSet(fsDoc(db,COL,"appdata"),{events:[],expectedNames:[],responses:{},archivedEvents:[]},{merge:false});
 }
 async function fsSave(d){
   await waitForFS();
@@ -242,15 +252,44 @@ function App(){
   const[tab,setTab]=useState("matrix");
   const[mode,setMode]=useState("pending");
 
+  const[loadErr,setLoadErr]=useState(null);
+  const[timedOut,setTimedOut]=useState(false);
+
   useEffect(()=>{
-    fsLoad().then(d=>{d=purge(archive(d));setData(d);});
+    // Timeout after 10s so a Firestore block never shows a permanent black screen
+    const t=setTimeout(()=>setTimedOut(true),10000);
+    fsLoad().then(d=>{
+      clearTimeout(t);
+      if(d._loadError){setLoadErr(d._loadError);return;}
+      d=purge(archive(d));setData(d);
+    }).catch(e=>{clearTimeout(t);setLoadErr(e.message);});
+    return()=>clearTimeout(t);
   },[]);
 
   const persist=async nd=>{
     nd=purge(archive(nd));
     setData(nd);
-    await fsSave(nd);
+    try{await fsSave(nd);}catch(e){console.error("Save error:",e);}
   };
+
+  if(loadErr||timedOut)return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#f0ede6",fontFamily:"DM Mono,monospace",fontSize:13,background:"#0c0c0e",gap:16,padding:24,textAlign:"center"}}>
+      <div style={{fontSize:32,marginBottom:4}}>⚠️</div>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:"#f0ede6"}}>Couldn't connect to Firestore</div>
+      <div style={{fontSize:12,color:"#b0ada8",maxWidth:380,lineHeight:1.7}}>
+        {timedOut&&!loadErr?"Connection timed out. ":""}
+        This can happen if your browser's tracking prevention is blocking Firebase, or if the Firestore document contains bad data.
+      </div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",marginTop:8}}>
+        <button onClick={()=>window.location.reload()} style={{padding:"10px 20px",background:"#e8c97d",color:"#0c0c0e",border:"none",borderRadius:8,fontFamily:"DM Mono,monospace",fontSize:12,letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer"}}>↺ Retry</button>
+        <button onClick={async()=>{try{await fsReset();window.location.reload();}catch(e){alert("Reset failed: "+e.message);}}} style={{padding:"10px 20px",background:"transparent",color:"#e87d7d",border:"1px solid #e87d7d",borderRadius:8,fontFamily:"DM Mono,monospace",fontSize:12,letterSpacing:".1em",textTransform:"uppercase",cursor:"pointer"}}>🗑 Reset Data & Retry</button>
+      </div>
+      <div style={{fontSize:11,color:"#5a5650",maxWidth:360,lineHeight:1.6,marginTop:4}}>
+        If you're on Edge, try disabling Tracking Prevention for this site:<br/>Settings → Privacy → Tracking Prevention → Exceptions.
+      </div>
+      {loadErr&&<div style={{fontSize:10,color:"#5a5650",fontFamily:"monospace",maxWidth:400,wordBreak:"break-all"}}>Error: {loadErr}</div>}
+    </div>
+  );
 
   if(!data)return(
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"#b0ada8",fontFamily:"DM Mono,monospace",fontSize:13,background:"#0c0c0e"}}>
